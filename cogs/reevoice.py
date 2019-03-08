@@ -87,6 +87,7 @@ def perms_check():
     async def predicate(ctx):
         player = ctx.bot.wavelink.get_player(ctx.guild.id, cls=Player)
         permissions = ctx.author.permissions_in(ctx.channel)
+
         try:
             if ctx.author == player.dj or permissions.manage_guild or permissions.administrator or permissions.manage_channels:
                 return True

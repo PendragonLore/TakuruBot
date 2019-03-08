@@ -1,4 +1,4 @@
-# CODE IS FROM https://gist.github.com/OneEyedKnight/0f188251247c58345a1a97e94d05dd15
+# PAGINATOR IS FROM https://gist.github.com/OneEyedKnight/0f188251247c58345a1a97e94d05dd15 #
 import asyncio
 import discord
 

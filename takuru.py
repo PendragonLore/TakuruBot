@@ -29,6 +29,7 @@ class TakuruBot(commands.Bot):
 
         self.remove_command("help")
 
+        print("\n\n### COG LOADING ###\n\n")
         for cog in self.init_cogs:  # Load extensions
             ext = cog.replace("cogs.", "")
             try:
@@ -39,23 +40,20 @@ class TakuruBot(commands.Bot):
                 traceback.print_exc()
 
     async def on_ready(self):
-        print(f"Logged in as {self.user.name}")
+        print(f"\n\nLogged in as {self.user.name}")
         print("Current servers:", end=" ")
         for guild in self.guilds:
-            print(f"{guild.name} (ID: {guild.id} Owner: {guild.owner.name}#{guild.owner.discriminator})",
-                  end=", ")
+            print(f"{guild.name} (ID: {guild.id} Owner: {guild.owner})", end=", ")
         print()
 
     @staticmethod
     async def on_command(ctx):
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if ctx.guild is None:
-            print(
-                f"[{date}] {ctx.message.author.name}#{ctx.message.author.discriminator} ran command {ctx.command.name} in PMs."
-                )
+            print(f"[{date}] {ctx.message.author} ran command {ctx.command.name} in PMs.")
         else:
             print(
-                f"[{date}] {ctx.message.author.name}#{ctx.message.author.discriminator} ran command {ctx.command.name} "
+                f"[{date}] {ctx.message.author} ran command {ctx.command.name} "
                 f"in the guild {ctx.guild.name} in #{ctx.channel.name}.")
 
     @staticmethod
@@ -65,10 +63,18 @@ class TakuruBot(commands.Bot):
     @staticmethod
     async def on_guild_remove(guild):
         print(f"I just got removed from {guild.name} (ID: {guild.id} "
-              f"Owner: {guild.owner.name}#{guild.owner.discriminator})")
+              f"Owner: {guild.owner})")
 
     async def setup(self):
-        self.db = await asyncpg.connect(**config.db)
+        print("\n\n### POSTGRES CONNECTION ###\n\n")
+        try:
+            print("Connecting to postgres...")
+            self.db = await asyncpg.connect(**config.db)
+        except asyncpg.PostgresConnectionError as e:
+            print("Failed to connect to Postgres.")
+            print(e, e.__traceback__)
+        else:
+            print("Connection succesful!")
 
 
 bot = TakuruBot()

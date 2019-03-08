@@ -5,9 +5,8 @@ import random
 import config
 import discord
 import async_cse
-import time
+from time import perf_counter
 from .utils.paginator import Paginator
-from .utils.helper import Helper
 from discord.ext import commands
 from functools import partial
 
@@ -205,9 +204,9 @@ class Web(commands.Cog):
         Returns the description, thumbnail and URL link of the page.
         Safe search is disabled for NSFW channels."""
 
-        start = time.perf_counter()
+        start = perf_counter()
         result = await self.get_search(ctx, query)
-        end = time.perf_counter()
+        end = perf_counter()
 
         embed = discord.Embed(colour=discord.Colour.blurple(),
                               description=result.url,
@@ -232,9 +231,9 @@ class Web(commands.Cog):
         Returns the image and URL link.
         Safe search is disabled for NSFW channels."""
 
-        start = time.perf_counter()
+        start = perf_counter()
         result = await self.get_search(ctx, query, is_image=True)
-        end = time.perf_counter()
+        end = perf_counter()
         embed = discord.Embed(colour=discord.Colour.blurple(),
                               title=result.title,
                               url=result.image_url)
