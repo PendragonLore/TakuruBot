@@ -110,6 +110,9 @@ class Memes(commands.Cog):
     async def meme_list(self, ctx):
         """Get a list of all the server's recorded memes."""
         memes = await self.bot.db.fetch("SELECT * FROM memes WHERE ServerID=$1", ctx.guild.id)
+
+        if len(memes) == 0:
+            return await ctx.send("There are no logged memes.")
         memes.sort()
 
         memes_list = []
@@ -168,11 +171,6 @@ class Memes(commands.Cog):
     async def nullpo(self, ctx):
         """\"I once heard Kurisu say 'Gah!' right after that word...\""""
         await ctx.send("Gah!")
-
-    @meme_list.error
-    async def meme_list_handler(self, ctx, error):
-        if isinstance(error, IndexError):
-            await ctx.send("There are no logged memes.")
             
 
 
