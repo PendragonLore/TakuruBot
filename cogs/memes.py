@@ -113,6 +113,7 @@ class Memes(commands.Cog):
 
         if len(memes) == 0:
             return await ctx.send("There are no logged memes.")
+        
         memes.sort()
 
         memes_list = []
@@ -142,9 +143,9 @@ class Memes(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def meme_remove(self, ctx, *, name):
         """Deletes a meme"""
-        check = await self.bot.db.fetchval("SELECT * FROM memes WHERE ServerID=$1 AND name=$2 AND ownerid=$3",
+        check = await self.bot.db.fetchval("SELECT * FROM memes WHERE ServerID=$1 AND name=$2",
                                            ctx.guild.id,
-                                           name, ctx.author.id, column=3)
+                                           name, column=3)
         if check is None:
             return await ctx.send("That meme doesn't exist.")
 
