@@ -46,7 +46,7 @@ class General(commands.Cog):
         else:
             user = ctx.message.author
 
-        username = user.name + "#" + user.discriminator
+        username = str(user)
         userid = user.id
         avatar_url = user.avatar_url
         nick = user.nick
