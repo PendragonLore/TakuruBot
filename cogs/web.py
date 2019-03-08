@@ -177,7 +177,6 @@ class Web(commands.Cog):
     @staticmethod
     async def get_search(ctx, query, is_image=False):
         async with ctx.channel.typing():
-            query = " ".join(query)
             keys = config.google_custom_search_api_keys
 
             for index, key in enumerate(keys):
@@ -201,7 +200,7 @@ class Web(commands.Cog):
                         raise NoMoreAPIKeys
 
     @google.command(name="search", aliases=["s"])
-    async def g_search(self, ctx, *query):
+    async def g_search(self, ctx, *, query):
         """Search a query on google.
         Returns the description, thumbnail and URL link of the page.
         Safe search is disabled for NSFW channels."""
@@ -228,7 +227,7 @@ class Web(commands.Cog):
         await ctx.send("Here's your search", embed=embed)
 
     @google.command(name="image_search", aliases=["i"])
-    async def g_image_search(self, ctx, *query):
+    async def g_image_search(self, ctx, *, query):
         """Search a query on google images.
         Returns the image and URL link.
         Safe search is disabled for NSFW channels."""
