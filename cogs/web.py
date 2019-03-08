@@ -118,7 +118,7 @@ class Web(commands.Cog):
             "quiet": True,
             "no_warnings": True,
             "default_search": "auto",
-            "source_address": "192.168.0.1",
+            "source_address": "0.0.0.0",
         }
 
         if not video:
