@@ -7,7 +7,7 @@ from discord.ext import commands
 
 
 # Define Bot class
-class MahoBot(commands.Bot):
+class TakuruBot(commands.Bot):
     def __init__(self):
         super().__init__(**config.bot)
 
@@ -71,7 +71,7 @@ class MahoBot(commands.Bot):
         self.db = await asyncpg.connect(**config.db)
 
 
-bot = MahoBot()
+bot = TakuruBot()
 
 try:
     bot.loop.run_until_complete(bot.start(config.TOKEN))
