@@ -140,6 +140,7 @@ class General(commands.Cog):
     @commands.command(name="ping")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def ping(self, ctx):
+        """It's like pings but pongs without pings."""
         start = time.perf_counter()
         message = await ctx.send('Ping...')
         end = time.perf_counter()
