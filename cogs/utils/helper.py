@@ -30,6 +30,7 @@ class Helper(commands.Cog):
                     pass
                 else:
                     cmds.append(cmd)
+
             for x in list(self.chunks(list(cmds), 8)):
                 help_embed = discord.Embed(colour=discord.Colour(0xa01b1b))
                 help_embed.set_author(name=f"{name} Commands ({len(cmds)})")
@@ -51,11 +52,13 @@ class Helper(commands.Cog):
         cog_name = cog.__class__.__name__
         cog_embeds = []
         cmds = []
+
         for cmd in cog.get_commands():
             if not await self.filter(ctx, cmd) or cmd.hidden:
                 pass
             else:
                 cmds.append(cmd)
+
         if not cmds:
             elist = [(discord.Embed(color=discord.Color.red(),
                                     description=f"{cog_name} commands are hidden or you don't have acces to them.")
@@ -99,9 +102,11 @@ class Helper(commands.Cog):
             return cmds_
         except AttributeError:
             embed = discord.Embed(color=discord.Color.blurple())
+
             embed.set_author(name=command.signature)
             embed.description = command.help
             elist = [embed]
+
             return elist
 
     @commands.command(hidden=True)

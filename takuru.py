@@ -3,7 +3,6 @@ import traceback
 import asyncpg
 import wavelink
 import config
-import asyncio
 from discord.ext import commands
 
 
@@ -11,8 +10,10 @@ from discord.ext import commands
 class MahoBot(commands.Bot):
     def __init__(self):
         super().__init__(**config.bot)
+
         self.loop.create_task(self.setup())
         self.wavelink = wavelink.Client(self)
+
         self.init_cogs = [
             "cogs.general",
             "cogs.memes",
@@ -25,6 +26,7 @@ class MahoBot(commands.Bot):
             "cogs.utils.helper",
         ]
         self.possible_responses = ["meh.", "I don't feel like answering right now."]
+
         self.remove_command("help")
 
         for cog in self.init_cogs:  # Load extensions
@@ -40,10 +42,8 @@ class MahoBot(commands.Bot):
         print(f"Logged in as {self.user.name}")
         print("Current servers:", end=" ")
         for guild in self.guilds:
-            print(
-                f"{guild.name} (ID: {guild.id} Owner: {guild.owner.name}#{guild.owner.discriminator})",
-                end=", ",
-            )
+            print(f"{guild.name} (ID: {guild.id} Owner: {guild.owner.name}#{guild.owner.discriminator})",
+                  end=", ")
         print()
 
     @staticmethod
@@ -52,12 +52,11 @@ class MahoBot(commands.Bot):
         if ctx.guild is None:
             print(
                 f"[{date}] {ctx.message.author.name}#{ctx.message.author.discriminator} ran command {ctx.command.name} in PMs."
-            )
+                )
         else:
             print(
                 f"[{date}] {ctx.message.author.name}#{ctx.message.author.discriminator} ran command {ctx.command.name} "
-                f"in the guild {ctx.guild.name} in #{ctx.channel.name}."
-            )
+                f"in the guild {ctx.guild.name} in #{ctx.channel.name}.")
 
     @staticmethod
     async def on_guild_join(guild):
@@ -65,21 +64,19 @@ class MahoBot(commands.Bot):
 
     @staticmethod
     async def on_guild_remove(guild):
-        print(
-            f"I just got removed from {guild.name} (ID: {guild.id} "
-            f"Owner: {guild.owner.name}#{guild.owner.discriminator})"
-        )
+        print(f"I just got removed from {guild.name} (ID: {guild.id} "
+              f"Owner: {guild.owner.name}#{guild.owner.discriminator})")
 
     async def setup(self):
         self.db = await asyncpg.connect(**config.db)
 
 
 bot = MahoBot()
-loop = asyncio.get_event_loop()
 
 try:
-    loop.run_until_complete(bot.start(config.TOKEN))
+    bot.loop.run_until_complete(bot.start(config.TOKEN))
 except KeyboardInterrupt:
-    loop.run_until_complete(bot.logout())
-    loop.run_until_complete(bot.close())
-    print("\nLogged out!")
+    bot.loop.run_until_complete(bot.logout())
+    bot.loop.run_until_complete(bot.close())
+
+    print("\n\nLogged out!")

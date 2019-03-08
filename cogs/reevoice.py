@@ -34,8 +34,6 @@ class Player(wavelink.Player):
         self.next = asyncio.Event()
         self.queue = asyncio.Queue()
 
-        self.count = 0
-
         self.now_playing = None
         self.is_looping = False
 
@@ -63,7 +61,7 @@ class Player(wavelink.Player):
             await player.play(song)
 
             self.now_playing = await self.generate_embed(song)
-            
+
             await self.next.wait()
 
     async def generate_embed(self, track: wavelink.Track):
@@ -78,7 +76,7 @@ class Player(wavelink.Player):
         embed.set_footer(text="\"Hope you like this.\"", icon_url=self.dj.avatar_url)
         if track.is_stream:
             embed.add_field(name="Lenght", value="STREAM 🔴")
-        else:    
+        else:
             embed.add_field(name="Lenght", value=str(timedelta(milliseconds=track.length)))
         embed.add_field(name="Requested by", value=track.requester.mention)
 
@@ -270,6 +268,7 @@ class ReeMusic(commands.Cog, name="Music"):
 
         await player.set_volume(volume)
         await ctx.send(f"Set player volume to {volume}")
+
 
 def setup(bot):
     bot.add_cog(ReeMusic(bot))

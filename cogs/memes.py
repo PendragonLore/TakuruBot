@@ -1,9 +1,5 @@
-import asyncio
-import random
 import discord
-import asyncpg
 from .utils.paginator import Paginator
-from .utils.helper import Helper
 from discord.ext import commands
 
 
@@ -25,29 +21,13 @@ class Memes(commands.Cog):
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    # REMOVED
-    # @commands.command(name="log")
-    # @commands.guild_only()
-    # @commands.cooldown(1, 1, commands.cooldowns.BucketType.user)
-    async def log(self, ctx, *, message_to_log):
-        """Log the arguments given if there are some in the first place.
-        The message returned is random and server locked."""
-        if message_to_log:
-            await self.bot.db.execute("INSERT INTO log (ServerID, message) VALUES ($1, $2)", ctx.guild.id,
-                                      message_to_log)
-
-        log = await self.bot.db.fetch("SELECT * FROM log WHERE ServerID=$1", ctx.guild.id)
-        random_response = random.choice(log)
-
-        await ctx.send(random_response[1])
-
     @commands.group(name="meme", invoke_without_command=True, case_insensitive=True)
     @commands.guild_only()
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def meme(self, ctx):
         """Memes related functions, all persistent and server-locked."""
-        helper = await Helper(self.bot).command_helper(command=ctx.command)
-        await Paginator(ctx, helper).paginate()
+        helper = self.bot.get_cog("Helper")
+        await Paginator(ctx, await helper.command_helper(ctx.command)).paginate()
 
     @meme.command(name="get", aliases=["send"])
     @commands.guild_only()
@@ -102,6 +82,7 @@ class Memes(commands.Cog):
         await self.bot.db.execute(
             "INSERT INTO memes (ServerID, name, content, ownerid) VALUES ($1, $2, $3, $4)", ctx.guild.id, name, content,
             ctx.author.id)
+
         await ctx.send(f"Succesfuly added meme {name}.\n\nContent is {content}.")
 
     @meme.command(name="list", aliases=["lis"])
@@ -113,7 +94,7 @@ class Memes(commands.Cog):
 
         if len(memes) == 0:
             return await ctx.send("There are no logged memes.")
-        
+
         memes.sort()
 
         memes_list = []
@@ -139,7 +120,6 @@ class Memes(commands.Cog):
 
     @meme.command(name="remove", aliases=["delete", "del"])
     @commands.guild_only()
-    # @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def meme_remove(self, ctx, *, name):
         """Deletes a meme"""
@@ -154,6 +134,7 @@ class Memes(commands.Cog):
 
         await self.bot.db.execute("DELETE FROM memes WHERE ServerID=$1 AND name=$2 AND ownerid=$3", ctx.guild.id, name,
                                   ctx.author.id)
+
         await ctx.send(f"Succesfully deleted meme {name}.")
 
     @commands.command(name="strunzimmerd", hidden=True)
@@ -164,15 +145,13 @@ class Memes(commands.Cog):
         Inside joke.png"""
 
         await ctx.send("Yes, you are right.")
-        await ctx.send(
-            f"Hey, {ctx.message.author.name}! Go call Soreo a strunzimmerd <:kokichilie:524257559209574418>.")
+        await ctx.send(f"Hey, {ctx.message.author.name}! Go call Soreo a strunzimmerd <:kokichilie:524257559209574418>.")
 
     @commands.command(name="nullpo")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def nullpo(self, ctx):
         """\"I once heard Kurisu say 'Gah!' right after that word...\""""
         await ctx.send("Gah!")
-            
 
 
 def setup(bot):

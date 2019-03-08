@@ -1,4 +1,5 @@
 import traceback
+import discord
 from discord.ext import commands
 
 
@@ -14,7 +15,7 @@ class CommandHandler(commands.Cog):
         if isinstance(error, commands.NoPrivateMessage):
             try:
                 return await ctx.send(f"{ctx.command} cannot be used in private messages.")
-            except:
+            except discord.Forbidden:
                 pass
 
         if isinstance(error, commands.DisabledCommand):

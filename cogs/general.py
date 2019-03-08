@@ -2,7 +2,6 @@ import datetime
 import random
 import time
 import discord
-import sys
 from discord.ext import commands
 
 
@@ -25,12 +24,14 @@ class General(commands.Cog):
         system_query = await self.bot.db.fetchval("SELECT * FROM fc WHERE userid=$1 AND system=$2",
                                                   ctx.message.author.id,
                                                   system, column=2)
+
         if system_query is not None:
             return await ctx.send(f"Your friend code for {system} is already present.")
         else:
             await self.bot.db.execute("INSERT INTO fc (userid, system, code) VALUES ($1, $2, $3)",
                                       ctx.message.author.id,
                                       system, fc, )
+
             await ctx.send(f"{system} {fc} was recorded in your user data.")
 
     @commands.command(name="userinfo", aliases=["user"])
@@ -58,10 +59,6 @@ class General(commands.Cog):
         has_nitro = user.is_avatar_animated()
         is_bot = user.bot
         status = str(user.status).capitalize()
-        # if user.is_on_mobile():
-        #    platform = "Mobile"
-        # else:
-        #    platform = "Desktop"
 
         fcs = []
         systems = ["switch", "3ds", "feh", "dl"]
@@ -109,7 +106,7 @@ class General(commands.Cog):
     async def avatar_url(self, ctx, *mentions: discord.Member):
         """Get yours or some mentioned users' profile picture.
         Limit is 3 per command."""
-        author = ctx.message.author
+
         if mentions:
             counter = 0
             for author in mentions:
@@ -118,16 +115,21 @@ class General(commands.Cog):
                 embed = discord.Embed(colour=discord.Colour(0xa01b1b), title=username,
                                       description=f"[Avatar URL Link]({author.avatar_url})",
                                       timestamp=datetime.datetime.utcnow())
+
                 embed.set_image(url=author.avatar_url)
+
                 await ctx.send(embed=embed)
+
                 if counter >= 3:
                     return
         else:
-            username = f"{author.name}#{author.discriminator}"
-            embed = discord.Embed(colour=discord.Colour(0xa01b1b), title=username,
-                                  description=f"[Avatar URL Link]({author.avatar_url})",
+
+            embed = discord.Embed(colour=discord.Colour(0xa01b1b), title=str(ctx.author),
+                                  description=f"[Avatar URL Link]({ctx.author.avatar_url})",
                                   timestamp=datetime.datetime.utcnow())
-            embed.set_image(url=author.avatar_url)
+
+            embed.set_image(url=ctx.author.avatar_url)
+
             await ctx.send(embed=embed)
 
     # TODO add more responses
@@ -144,9 +146,10 @@ class General(commands.Cog):
         start = time.perf_counter()
         message = await ctx.send('Ping...')
         end = time.perf_counter()
-        duration = (end - start) * 1000
-        await message.edit(
-            content='Pong! Latency is: {:.2f}ms, websocket latency is {:.2f}ms'.format(duration, self.bot.latency * 1000))
+        duration = round((end - start) * 1000, 2)
+        latency = round(self.bot.latency * 1000, 2)
+
+        await message.edit(content=f"Pong! Latency is: {duration}ms, websocket latency is {latency}ms")
 
 
 def setup(bot):

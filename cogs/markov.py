@@ -38,10 +38,12 @@ class Markov(commands.Cog):
             random_int = random.randint(1, 602)
             async with aiofiles.open(f"cogs/utils/markov/markov ({random_int}).txt", "a+") as markovdb:
                 _message = message.content
+
                 if len(message.content.split()) <= 3 or any(punct in message.content for punct in self.punctuation):
                     dot = ""
                 else:
                     dot = "."
+
                 for key, value in config.ignored_mentions.items():
                     _message = _message.replace(key, value)
                 await markovdb.write(f"{_message}{dot}\n")
@@ -56,7 +58,7 @@ class Markov(commands.Cog):
         t_path = f"cogs/utils/markov/markov ({randomized_int}).txt"
         async with aiofiles.open(t_path) as file:
             word_dictionary = await self.learn(await file.read())
-            print(word_dictionary)
+            await ctx.send(word_dictionary)
 
     @commands.command()
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
@@ -67,14 +69,17 @@ class Markov(commands.Cog):
         if message_to_log:
             message = " ".join(message_to_log)
             randomized_int = random.randint(1, 602)
+
             async with aiofiles.open(f"cogs/utils/markov/markov ({randomized_int}).txt", "a+") as markovdb:
                 if len(message) <= 3 or any(punct in message for punct in ["!", ".", "?", "-"]):
                     dot = ""
                 else:
                     dot = "."
+
                 for key, value in config.ignored_mentions.items():
                     message.replace(key, value)
                 markovdb.write(f"{message}{dot}\n")
+
         await self.markovgen(ctx)
 
     async def markovgen(self, ctx):
@@ -110,7 +115,7 @@ class Markov(commands.Cog):
     @staticmethod
     async def learn(_input):
         _dict = {}
-        word_tokens = re.split(" |\n", _input)
+        word_tokens = re.split("[\n]", _input)
 
         for i in range(0, len(word_tokens) - 1):
             current_word = word_tokens[i]
