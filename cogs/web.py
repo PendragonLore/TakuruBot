@@ -10,6 +10,8 @@ from .utils.paginator import Paginator
 from discord.ext import commands
 from functools import partial
 
+class NoMoreAPIKeys(Exception):
+    pass
 
 class Web(commands.Cog):
     """Interact with the interweb!"""
@@ -178,9 +180,9 @@ class Web(commands.Cog):
             query = " ".join(query)
             keys = config.google_custom_search_api_keys
 
-            for i in range(len(keys)):
+            for index, key in enumerate(keys):
                 try:
-                    client = async_cse.Search(api_key=keys[i])
+                    client = async_cse.Search(api_key=key)
 
                     if ctx.channel.is_nsfw():
                         is_safe = True
@@ -191,12 +193,12 @@ class Web(commands.Cog):
                     await client.close()
                     return result
                 except async_cse.NoResults:
-                    return await ctx.send("That query returned nothing.")
+                    return await ctx.send("The query returned nothing.")
                 except async_cse.NoMoreRequests:
-                    if len(keys) != i:
+                    if len(keys) != index:
                         continue
                     else:
-                        raise async_cse.NoMoreRequests
+                        raise NoMoreAPIKeys
 
     @google.command(name="search", aliases=["s"])
     async def g_search(self, ctx, *query):
