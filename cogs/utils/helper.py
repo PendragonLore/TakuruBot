@@ -18,7 +18,7 @@ class Helper(commands.Cog):
             await command.can_run(ctx)
             await ctx.bot.can_run(ctx)
             return True
-        except:
+        except commands.CheckFailure:
             return False
 
     async def all_helper(self, ctx):
