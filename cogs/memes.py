@@ -171,8 +171,9 @@ class Memes(commands.Cog):
 
     @meme_list.error
     async def meme_list_handler(self, ctx, error):
-        if isinstance(error, asyncpg.exceptions.DataError):
+        if isinstance(error, IndexError):
             await ctx.send("There are no logged memes.")
+            
 
 
 def setup(bot):
