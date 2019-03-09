@@ -20,15 +20,16 @@ class Reddit(commands.Cog):
         helper = self.bot.get_cog("Helper")
         await Paginator(ctx, await helper.command_helper(ctx.command)).paginate()
 
-    @reddit_.command(name="search", aliases=["s"])
-    async def reddit_search(self, ctx, *, query):
-        request = await self.reddit.request(Route("GET", "/search.json", q=query, limit=1))
+    # @reddit_.command(name="search", aliases=["s"])
+    # async def reddit_search(self, ctx, *, query):
 
-        for r in request:
-            data = r["data"]["children"]
+    # request = await self.reddit.request(Route("GET", "/search.json", q=query, limit=1))
 
-            # title = data["title"]
-            # text_content = data["selftext"]
-            # author = data["author"]
-            # url = Route.BASE + data["permalink"]
+    # for r in request:
+    # pass
+    # data = r["data"]["children"]
 
+    # title = data["title"]
+    # text_content = data["selftext"]
+    # author = data["author"]
+    # url = Route.BASE + data["permalink"]
