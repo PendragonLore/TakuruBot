@@ -33,7 +33,7 @@ class Track(wavelink.Track):
 
 # noinspection PyUnresolvedReferences
 class Player(wavelink.Player):
-    """The custom Player, where a few more useful variables functions to use."""
+    """The custom Player, where a few more useful variables functions to use are defined."""
 
     def __init__(self, bot: Union[commands.Bot, commands.AutoShardedBot], guild_id: int, node: wavelink.Node):
         super().__init__(bot, guild_id, node)
