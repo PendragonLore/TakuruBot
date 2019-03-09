@@ -57,9 +57,7 @@ class Client:
         json = kwargs.pop("json", True)
 
         async with self._session.request(method, url, headers=headers) as r:
-
             try:
-
                 data = await r.json() if json else await r.text(encoding="utf-8")
 
                 if 300 > r.status >= 200:
