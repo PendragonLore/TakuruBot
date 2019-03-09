@@ -21,6 +21,18 @@ class Web(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @staticmethod
+    async def generate_gif_embed(ctx, gif, search):
+        embed = discord.Embed(colour=discord.Colour(0xA01B1B),
+                              title=f"**Search: ** {search}",
+                              description=f"[GIF URL Link]({gif})")
+
+        embed.set_image(url=gif)
+        embed.set_footer(text="\"A right-sider shouldn't waste time on this...\"",
+                         icon_url=ctx.message.author.avatar_url)
+
+        await ctx.send(embed=embed)
+
     @commands.command(name="giphy")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def giphy(self, ctx, *gif):
@@ -29,33 +41,31 @@ class Web(commands.Cog):
         async with ctx.channel.typing():
             async with aiohttp.ClientSession(loop=self.bot.loop) as session:
                 lmt = 5
+                base = "http://api.giphy.com/v1/gifs"
                 gif = "+".join(gif)
-                async with session.get(
-                        f"http://api.giphy.com/v1/gifs/search?q={gif}&api_key={config.GIPHY_KEY}&limit={lmt}") as r:
-                    if r.status == 200:
-                        data = (await r.json())["data"]
-                        to_send = []
 
-                        for entry in data:
-                            url = entry["images"]["original"]["url"]
-                            to_send.append(url)
+                async with session.get(f"{base}/search?q={gif}&api_key={config.GIPHY_KEY}&limit={lmt}") as r:
+                    if r.status == 200:
+                        try:
+                            data = (await r.json())["data"]
+                            to_send = []
+
+                            for entry in data:
+                                url = entry["images"]["original"]["url"]
+                                to_send.append(url)
+                        except KeyError:
+                            return await ctx.send("Search returned nothing.")
+                        finally:
+                            await session.close()
 
                     else:
-                        raise commands.CommandInvokeError("Status code error.")
+                        await session.close()
+                        return await ctx.send("Status error.")
+
                     _gif = random.choice(to_send)
                     search = gif.replace("+", " ")
 
-                    embed = discord.Embed(colour=discord.Colour(0xA01B1B),
-                                          title=f"**Search: ** {search}",
-                                          description=f"[GIF URL Link]({_gif})")
-
-                    embed.set_image(url=_gif)
-                    embed.set_footer(text='"A scientist shouldn\'t waste time on this..."',
-                                     icon_url=ctx.message.author.avatar_url)
-
-            await session.close()
-
-        await ctx.send(embed=embed)
+        await self.generate_gif_embed(ctx, _gif, search)
 
     @commands.command(name="tenor")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
@@ -64,48 +74,38 @@ class Web(commands.Cog):
         The search limit is 5 GIFs."""
         async with ctx.channel.typing():
             async with aiohttp.ClientSession(loop=self.bot.loop) as session:
-                lmt = 5  # Search limit
+                lmt = 5
                 base = "https://api.tenor.com/v1/"
 
-                # Get anon_id
                 async with session.get(f"{base}anonid?key={config.TENOR_KEY}") as r:
                     if r.status == 200:
                         anon_id = (await r.json())["anon_id"]
                     else:
-                        raise commands.CommandInvokeError("Status code error.")
+                        return await ctx.send("Status code error.")
 
-                # search term
                 search = "-".join(gif)
                 async with session.get(
-                        f"{base}search?key={config.TENOR_KEY}&q={search}&anon_id={anon_id}&limit={lmt}"
-                ) as r:
+                        f"{base}search?key={config.TENOR_KEY}&q={search}&anon_id={anon_id}&limit={lmt}") as r:
                     if r.status == 200:
-                        #  Link to randomly send
                         to_send = []
 
-                        data = (await r.json())["results"]
-                        for entry in data:
-                            url = entry["media"][0]["gif"]["url"]
-                            to_send.append(url)
-
-                        # print(to_send)
-                        _gif = random.choice(to_send)
-
-                        # Define embed
-                        search = search.replace("-", " ")
-                        embed = discord.Embed(colour=discord.Colour(0xA01B1B),
-                                              title=f"**Search: ** {search}",
-                                              description=f"[GIF URL Link]({_gif})")
-                        embed.set_image(url=_gif)
-                        embed.set_footer(text='"A scientist shouldn\'t waste time on this..."',
-                                         icon_url=ctx.message.author.avatar_url)
-
+                        try:
+                            data = (await r.json())["results"]
+                            for entry in data:
+                                url = entry["media"][0]["gif"]["url"]
+                                to_send.append(url)
+                        except KeyError:
+                            return await ctx.send("Search returned nothing.")
+                        finally:
+                            await session.close()
                     else:
-                        raise commands.CommandInvokeError("Status code error.")
+                        await session.close()
+                        return await ctx.send("Status error.")
 
-            await session.close()
+                    _gif = random.choice(to_send)
+                    search = search.replace("-", " ")
 
-        await ctx.send(embed=embed)
+        await self.generate_gif_embed(ctx, _gif, search)
 
     @commands.command(name="yt")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
