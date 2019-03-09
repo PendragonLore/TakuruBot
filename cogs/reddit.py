@@ -1,6 +1,6 @@
 from .utils.redditapi import *
 from .utils.paginator import Paginator
-import discord
+# import discord
 from discord.ext import commands
 
 
@@ -27,8 +27,8 @@ class Reddit(commands.Cog):
         for r in request:
             data = r["data"]["children"]
 
-            title = data["title"]
-            text_content = data["selftext"]
-            author = data["author"]
-            url = Route.BASE + data["permalink"]
+            # title = data["title"]
+            # text_content = data["selftext"]
+            # author = data["author"]
+            # url = Route.BASE + data["permalink"]
 
