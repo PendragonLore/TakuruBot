@@ -40,7 +40,7 @@ class TakuruBot(commands.Bot):
                 traceback.print_exc()
 
     async def on_ready(self):
-        print(f"\n\nLogged in as {self.user.name}")
+        print(f"\nLogged in as {self.user.name}")
         print("Current servers:", end=" ")
         for guild in self.guilds:
             print(f"{guild.name} (ID: {guild.id} Owner: {guild.owner})", end=", ")
@@ -66,13 +66,13 @@ class TakuruBot(commands.Bot):
               f"Owner: {guild.owner})")
 
     async def setup(self):
-        print("\n\n### POSTGRES CONNECTION ###\n\n")
+        print(f"\n\n### POSTGRES CONNECTION ###\n\n")
         try:
-            print("Connecting to postgres...")
+            print(f"Connecting to postgres...")
             self.db = await asyncpg.connect(**config.db)
         except asyncpg.PostgresConnectionError as e:
             print("Failed to connect to Postgres.")
-            print(e, e.__traceback__)
+            print(e.__traceback__)
         else:
             print("Connection succesful!")
 

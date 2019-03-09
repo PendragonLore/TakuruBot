@@ -1,4 +1,4 @@
-import discord
+﻿import discord
 import asyncio
 import wavelink
 import config
@@ -11,6 +11,14 @@ RURL = re.compile('https?://(?:www\.)?.+')
 
 
 class NotDJ(Exception):
+    pass
+
+
+class NotPlaying(Exception):
+    pass
+
+
+class NotConnected(Exception):
     pass
 
 
@@ -47,7 +55,7 @@ class Player(wavelink.Player):
         player = self.bot.wavelink.get_player(self.guild_id, cls=Player)
 
         while True:
-            if self.now_playing:
+            if self.now_playing and not self.is_looping:
                 await self.now_playing.delete()
 
             self.next.clear()
@@ -75,28 +83,44 @@ class Player(wavelink.Player):
         embed.set_author(name=f"Uploader: {track.info['author']}", icon_url=self.bot.user.avatar_url)
         embed.set_footer(text="\"Hope you like this.\"", icon_url=self.dj.avatar_url)
         if track.is_stream:
-            embed.add_field(name="Lenght", value="STREAM 🔴")
+            embed.add_field(name="Lenght", value="STREAM ð´")
         else:
             embed.add_field(name="Lenght", value=str(timedelta(milliseconds=track.length)))
         embed.add_field(name="Requested by", value=track.requester.mention)
+        embed.add_field(name="Current DJ", value=self.dj.mention)
 
         return await self.context.send("**Now playing:**", embed=embed)
 
+    @staticmethod
+    def perms_check():
+        async def predicate(ctx):
+            player = ctx.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+            permissions = ctx.author.permissions_in(ctx.channel)
 
-def perms_check():
-    async def predicate(ctx):
-        player = ctx.bot.wavelink.get_player(ctx.guild.id, cls=Player)
-        permissions = ctx.author.permissions_in(ctx.channel)
+            try:
+                if ctx.author == player.dj or permissions.manage_guild or permissions.administrator or permissions.manage_channels:
+                    return True
+            except AttributeError:
+                return False
 
-        try:
-            if ctx.author == player.dj or permissions.manage_guild or permissions.administrator or permissions.manage_channels:
-                return True
-        except AttributeError:
-            pass
+            raise NotDJ
 
-        raise NotDJ
+        return commands.check(predicate)
 
-    return commands.check(predicate)
+    @staticmethod
+    def state_check():
+        async def predicate(ctx):
+            player = ctx.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+            if not player.is_connected:
+                raise NotConnected
+
+            if not player.is_playing:
+                raise NotPlaying
+
+            return True
+
+        return commands.check(predicate)
 
 
 class ReeMusic(commands.Cog, name="Music"):
@@ -110,9 +134,16 @@ class ReeMusic(commands.Cog, name="Music"):
         if isinstance(error, NotDJ):
             return await ctx.send("You are not the DJ or lack the necessary permission.")
 
+        if isinstance(error, NotConnected):
+            return await ctx.send("Player is not connected.")
+
+        if isinstance(error, NotPlaying):
+            return await ctx.send("Player is not playing anything.")
+
     async def cog_check(self, ctx):
         if ctx.guild:
             return True
+
         raise commands.NoPrivateMessage
 
     async def node(self):
@@ -144,11 +175,6 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player.context = ctx
 
-    @connect.error
-    async def connect_handler(self, ctx, error):
-        if isinstance(error, commands.BadArgument):
-            return await ctx.send("Please mention a valid voice channel.")
-
     @commands.command()
     async def play(self, ctx, *, query):
         """Search for and add a song to the queue."""
@@ -162,6 +188,7 @@ class ReeMusic(commands.Cog, name="Music"):
             return await ctx.send("Could not find any songs.")
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
         if not player.is_connected:
             await ctx.invoke(self.connect)
 
@@ -174,37 +201,34 @@ class ReeMusic(commands.Cog, name="Music"):
         await ctx.send(f"Added **{track}** to the queue.")
 
     @commands.command()
-    @perms_check()
+    @Player.state_check()
+    @Player.perms_check()
     async def skip(self, ctx):
         """Skip the currently playing song.
         Only DJ and Moderators can use this command."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        if not player.is_playing or not player.is_connected:
-            return await ctx.send("I am not currently playing anything.")
-
         await ctx.send(f"Skipped the song **{player.current.title}**.")
         await player.stop()
 
     @commands.command(name="disconnect")
-    @perms_check()
+    @Player.state_check()
+    @Player.perms_check()
     async def disconnect(self, ctx):
         """Disconnect and clear the player's queue.
         Only DJ and Moderators can use this command."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        if not player.is_connected:
-            return await ctx.send("I'm not connected to any voice channels.")
-
         try:
-            await ctx.send(f"Disconnected from {ctx.author.voice.channel}.")
+            await ctx.send(f"Disconnecting from {ctx.author.voice.channel}.")
         except AttributeError:
-            await ctx.send("Disconnected from voice.")
+            await ctx.send("Disconnecting from voice.")
 
         await player.disconnect()
         await player.destroy()
 
     @commands.command(name="nowplaying", aliases=["np"])
+    @Player.state_check()
     async def now_playing(self, ctx):
         """Show the currently playing track's info."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -212,6 +236,7 @@ class ReeMusic(commands.Cog, name="Music"):
         await player.generate_embed(player.current)
 
     @commands.command(name="queue", aliases=["q"])
+    @Player.state_check()
     async def queue(self, ctx):
         """Show the queue."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -239,6 +264,7 @@ class ReeMusic(commands.Cog, name="Music"):
                 f"**Next track: {queue[0]} added by {queue[0].requester}**")
 
     @commands.command(name="loop")
+    @Player.state_check()
     async def loop(self, ctx, *, arg="on"):
         """Make the current song loop or stop the loop by adding `off`"""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -257,18 +283,35 @@ class ReeMusic(commands.Cog, name="Music"):
         return await ctx.send("Player is now looping.")
 
     @commands.command(name="setvolume", aliases=["vol", "volume", "setvol"])
-    async def set_volume(self, ctx, volume: int):
-        """Set the player's volume, earrapes are encouraged."""
+    @Player.state_check()
+    async def set_volume(self, ctx, volume):
+        """Set the player's volume, earrapes are encouraged :omegalul:."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        if not player.is_connected:
-            return await ctx.send("I'm not conntected to a voice channel.")
-
-        if not player.is_playing:
-            return await ctx.send("I'm not currently playing anything.")
+        if not isinstance(volume, int):
+            return await ctx.send("Volume must be a number.")
 
         await player.set_volume(volume)
         await ctx.send(f"Set player volume to {volume}")
+
+    @commands.command(name="pause")
+    @Player.state_check()
+    async def pause(self, ctx, arg="on"):
+        """Make the current song loop or stop the loop by adding `off`"""
+        player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        if arg.lower() == "off":
+            if not player.paused:
+                return await ctx.send("Player is not paused.")
+
+            await player.set_pause(pause=False)
+            return await ctx.send("Player is now playing.")
+
+        if player.paused:
+            return await ctx.send("Player is already paused.")
+
+        await player.set_pause(pause=True)
+        return await ctx.send("Player is now paused.")
 
 
 def setup(bot):

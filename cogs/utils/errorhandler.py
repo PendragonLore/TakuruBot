@@ -34,12 +34,17 @@ class CommandHandler(commands.Cog):
 
         if isinstance(error, commands.CommandOnCooldown):
             cooldown = round(error.retry_after, 2)
-            return await ctx.send(f"The command is currently on cooldown, retry after {cooldown} seconds")
+            return await ctx.send(f"The command is currently on cooldown, retry in {cooldown} seconds")
 
         if isinstance(error, commands.BadArgument) or isinstance(error, commands.MissingRequiredArgument):
-            return await ctx.send("Missing or bad required argument.")
+            return await ctx.send("Missing or bad argument.")
 
         traceback.print_exception(type(error), error, error.__traceback__)
+
+        if hasattr(ctx.command, "on_error"):
+            return
+
+
 
         # await ctx.send(f"An uncaught error occured in {ctx.command}")
 
