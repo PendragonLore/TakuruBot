@@ -10,8 +10,10 @@ from .utils.paginator import Paginator
 from discord.ext import commands
 from functools import partial
 
+
 class NoMoreAPIKeys(Exception):
     pass
+
 
 class Web(commands.Cog):
     """Interact with the interweb!"""
@@ -25,7 +27,7 @@ class Web(commands.Cog):
         """Search a gif on Giphy.
         The search limit is 5 GIFs."""
         async with ctx.channel.typing():
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(loop=self.bot.loop) as session:
                 lmt = 5
                 gif = "+".join(gif)
                 async with session.get(
@@ -61,7 +63,7 @@ class Web(commands.Cog):
         """Search a gif on Tenor.
         The search limit is 5 GIFs."""
         async with ctx.channel.typing():
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(loop=self.bot.loop) as session:
                 lmt = 5  # Search limit
                 base = "https://api.tenor.com/v1/"
 

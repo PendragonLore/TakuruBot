@@ -23,6 +23,8 @@ class NotConnected(Exception):
 
 
 class Track(wavelink.Track):
+    """The custom Track instance, added just the requester variable."""
+
     def __init__(self, id_, info, ctx):
         super().__init__(id_, info)
 
@@ -31,6 +33,8 @@ class Track(wavelink.Track):
 
 # noinspection PyUnresolvedReferences
 class Player(wavelink.Player):
+    """The custom Player, where a few more useful variables functions to use."""
+
     def __init__(self, bot: Union[commands.Bot, commands.AutoShardedBot], guild_id: int, node: wavelink.Node):
         super().__init__(bot, guild_id, node)
 
@@ -103,7 +107,8 @@ class Player(wavelink.Player):
             except AttributeError:
                 return False
 
-            raise NotDJ
+            #await ctx.send("You are not a DJ or don't have the nece")
+            return False
 
         return commands.check(predicate)
 
@@ -201,22 +206,20 @@ class ReeMusic(commands.Cog, name="Music"):
         await ctx.send(f"Added **{track}** to the queue.")
 
     @commands.command()
-    @Player.state_check()
-    @Player.perms_check()
+    #@Player.state_check()
+    #@Player.perms_check()
     async def skip(self, ctx):
-        """Skip the currently playing song.
-        Only DJ and Moderators can use this command."""
+        """Skip the currently playing song."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
         await ctx.send(f"Skipped the song **{player.current.title}**.")
         await player.stop()
 
     @commands.command(name="disconnect")
-    @Player.state_check()
-    @Player.perms_check()
+    #@Player.state_check()
+    #@Player.perms_check()
     async def disconnect(self, ctx):
-        """Disconnect and clear the player's queue.
-        Only DJ and Moderators can use this command."""
+        """Disconnect and clear the player's queue."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
         try:
@@ -228,7 +231,7 @@ class ReeMusic(commands.Cog, name="Music"):
         await player.destroy()
 
     @commands.command(name="nowplaying", aliases=["np"])
-    @Player.state_check()
+    #@Player.state_check()
     async def now_playing(self, ctx):
         """Show the currently playing track's info."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -236,7 +239,7 @@ class ReeMusic(commands.Cog, name="Music"):
         await player.generate_embed(player.current)
 
     @commands.command(name="queue", aliases=["q"])
-    @Player.state_check()
+    #@Player.state_check()
     async def queue(self, ctx):
         """Show the queue."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -264,7 +267,7 @@ class ReeMusic(commands.Cog, name="Music"):
                 f"**Next track: {queue[0]} added by {queue[0].requester}**")
 
     @commands.command(name="loop")
-    @Player.state_check()
+    #@Player.state_check()
     async def loop(self, ctx, *, arg="on"):
         """Make the current song loop or stop the loop by adding `off`"""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -283,7 +286,7 @@ class ReeMusic(commands.Cog, name="Music"):
         return await ctx.send("Player is now looping.")
 
     @commands.command(name="setvolume", aliases=["vol", "volume", "setvol"])
-    @Player.state_check()
+    #@Player.state_check()
     async def set_volume(self, ctx, volume):
         """Set the player's volume, earrapes are encouraged :omegalul:."""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
@@ -295,9 +298,9 @@ class ReeMusic(commands.Cog, name="Music"):
         await ctx.send(f"Set player volume to {volume}")
 
     @commands.command(name="pause")
-    @Player.state_check()
+    #@Player.state_check()
     async def pause(self, ctx, arg="on"):
-        """Make the current song loop or stop the loop by adding `off`"""
+        """Make the current song loop or resume it by adding `off`"""
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
         if arg.lower() == "off":

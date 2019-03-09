@@ -21,7 +21,7 @@ class NotFound(RedditException):
 
 
 class Route:
-    BASE = "https://www.reddit.com/"
+    BASE = "https://www.reddit.com"
 
     def __init__(self, method, path, **params):
         self.method = method

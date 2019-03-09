@@ -44,8 +44,6 @@ class CommandHandler(commands.Cog):
         if hasattr(ctx.command, "on_error"):
             return
 
-
-
         # await ctx.send(f"An uncaught error occured in {ctx.command}")
 
 

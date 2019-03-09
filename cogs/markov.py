@@ -16,6 +16,7 @@ class Markov(commands.Cog):
     async def cog_check(self, ctx):
         if ctx.guild.id != 477245169167499274:
             return False
+
         return True
 
     @commands.Cog.listener()
@@ -27,7 +28,10 @@ class Markov(commands.Cog):
         await self.markovlogging(message)
 
     async def markovlogging(self, message):
-        prefixes = [".", "f?", "h?", "!", "mh!", ";;", "=", "--", "%", "t!", "m!", "mt!"]
+        prefixes = [".", "f?", "h?", "!", "mh!",
+                    ";;", "=", "--", "%", "t!",
+                    "m!", "mt!"
+                    ]
         if not message.content:
             pass
         elif any(message.content.lower().startswith(prefix) for prefix in prefixes):
@@ -100,8 +104,7 @@ class Markov(commands.Cog):
                 result.replace("\r\n", '')
                 last_word = new_word
 
-                if len(result.split(" ")) > random.randint(3, 8) and any(
-                        punct in result[-2:] for punct in self.punctuation):
+                if len(result.split(" ")) > random.randint(3, 8) and any(punct in result[-2:] for punct in self.punctuation):
                     punctuation = True
 
                 counter += 1

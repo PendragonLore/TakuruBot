@@ -70,7 +70,7 @@ class Memes(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def meme_add(self, ctx, name, *, content):
         """Adds a meme."""
-        content = content.lower()
+        name = name.lower()
         if not content:
             return await ctx.send("Content cannot be empty.")
 
@@ -145,7 +145,8 @@ class Memes(commands.Cog):
         Inside joke.png"""
 
         await ctx.send("Yes, you are right.")
-        await ctx.send(f"Hey, {ctx.message.author.name}! Go call Soreo a strunzimmerd <:kokichilie:524257559209574418>.")
+        await ctx.send(
+            f"Hey, {ctx.message.author.name}! Go call Soreo a strunzimmerd <:kokichilie:524257559209574418>.")
 
     @commands.command(name="nullpo")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
