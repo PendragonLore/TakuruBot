@@ -1,4 +1,3 @@
-import aiohttp
 import youtube_dl
 import datetime
 import random
