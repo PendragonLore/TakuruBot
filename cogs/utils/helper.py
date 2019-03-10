@@ -117,7 +117,7 @@ class Helper(commands.Cog):
         if command:
             k = ctx.bot.get_cog(command) or ctx.bot.get_command(command)
             if not k:
-                return await ctx.send(f'Looks like "{command}" is not a command or category.')
+                return await ctx.send(f"Looks like \"{command}\" is not a command or category.")
             if isinstance(k, commands.Command):
                 await Paginator(ctx, await self.command_helper(k)).paginate()
             else:

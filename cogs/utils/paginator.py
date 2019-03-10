@@ -16,11 +16,11 @@ class Paginator:
         self.channel = ctx.channel
         self.current = 0
         self.reactions = [
-            ('\N{BLACK LEFT-POINTING TRIANGLE}', self.backward),
-            ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.forward),
-            ('\N{INPUT SYMBOL FOR NUMBERS}', self.selector),
-            ('\N{BLACK SQUARE FOR STOP}', self.stop),
-            ('\N{INFORMATION SOURCE}', self.info)]
+            ("\N{BLACK LEFT-POINTING TRIANGLE}", self.backward),
+            ("\N{BLACK RIGHT-POINTING TRIANGLE}", self.forward),
+            ("\N{INPUT SYMBOL FOR NUMBERS}", self.selector),
+            ("\N{BLACK SQUARE FOR STOP}", self.stop),
+            ("\N{INFORMATION SOURCE}", self.info)]
 
     async def setup(self):
         if self.embed is False:
@@ -82,7 +82,7 @@ class Paginator:
 
         delete = await self.channel.send(f"Which page do you want to turn to? **1-{self.max_pages + 1}?**")
         try:
-            number = int((await self.bot.wait_for('message', check=check, timeout=60)).content)
+            number = int((await self.bot.wait_for("message", check=check, timeout=60)).content)
         except asyncio.TimeoutError:
             return await self.ctx.send("You ran out of time.")
         else:
@@ -100,7 +100,7 @@ class Paginator:
 
     async def info(self):
         embed = discord.Embed(colour=discord.Colour.blurple())
-        embed.set_author(name='Instructions')
+        embed.set_author(name="Instructions")
         embed.description = "This is a reaction paginator; when you react to one of the buttons below " \
                             "the message gets edited. Below you will find what the reactions do."
         embed.add_field(name="Previous Page ◀", value="This reaction takes you to the previous page. "
@@ -135,7 +135,7 @@ class Paginator:
         while self.paginating:
             if perms:
                 try:
-                    reaction, user = await self.bot.wait_for('reaction_add', check=self._check, timeout=120)
+                    reaction, user = await self.bot.wait_for("reaction_add", check=self._check, timeout=120)
                 except asyncio.TimeoutError:
                     return await self.stop()
 
@@ -147,8 +147,8 @@ class Paginator:
                 await self.execute()
             else:
                 done, pending = await asyncio.wait(
-                    [self.bot.wait_for('reaction_add', check=self._check, timeout=120),
-                     self.bot.wait_for('reaction_remove', check=self._check, timeout=120)],
+                    [self.bot.wait_for("reaction_add", check=self._check, timeout=120),
+                     self.bot.wait_for("reaction_remove", check=self._check, timeout=120)],
                     return_when=asyncio.FIRST_COMPLETED)
                 try:
                     done.pop().result()

@@ -7,7 +7,7 @@ from typing import Union
 from datetime import timedelta
 from discord.ext import commands
 
-RURL = re.compile('https?://(?:www\.)?.+')
+RURL = re.compile("https?://(?:www\.)?.+")
 
 
 class NotDJ(Exception):

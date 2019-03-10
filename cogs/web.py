@@ -144,7 +144,7 @@ class Web(commands.Cog):
 
             if ctx.guild is None:
                 embed.set_footer(
-                    text='"I hope this is what your searching for."',
+                    text="\"I hope this is what your searching for.\"",
                     icon_url=ctx.message.author.avatar_url)
 
                 if len(data["description"]) != 0:

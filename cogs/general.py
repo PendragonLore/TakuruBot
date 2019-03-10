@@ -144,12 +144,10 @@ class General(commands.Cog):
     async def ping(self, ctx):
         """It's like pings but pongs without pings."""
         start = time.perf_counter()
-        message = await ctx.send('Ping...')
+        message = await ctx.send("Ping...")
         end = time.perf_counter()
-        duration = round((end - start) * 1000, 2)
-        latency = round(self.bot.latency * 1000, 2)
 
-        await message.edit(content=f"Pong! Latency is: {duration}ms, websocket latency is {latency}ms")
+        await message.edit(content=f"Pong! Latency is: {(end - start) * 1000:.2f}ms, websocket latency is {self.bot.latency * 1000:.2f}ms")
 
 
 def setup(bot):

@@ -51,7 +51,7 @@ class Client:
         method = route.method
         url = route.url
         headers = {
-            'User-Agent': self.user_agent
+            "User-Agent": self.user_agent
         }
 
         json = kwargs.pop("json", True)
