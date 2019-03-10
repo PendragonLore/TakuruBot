@@ -1,5 +1,6 @@
 import datetime
 import traceback
+import aiohttp
 import asyncpg
 import wavelink
 import config
@@ -13,6 +14,9 @@ class TakuruBot(commands.Bot):
 
         self.loop.create_task(self.setup())
         self.wavelink = wavelink.Client(self)
+        self.http_headers = {
+            'User-Agent': "TakuruBot"
+        }
 
         self.init_cogs = [
             "cogs.general",
@@ -66,15 +70,23 @@ class TakuruBot(commands.Bot):
               f"Owner: {guild.owner})")
 
     async def setup(self):
+        self.http_ = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
+
         print(f"\n\n### POSTGRES CONNECTION ###\n\n")
         try:
             print(f"Connecting to postgres...")
-            self.db = await asyncpg.connect(**config.db)
+            self.db = await asyncpg.create_pool(**config.db, loop=self.loop)
         except asyncpg.PostgresConnectionError as e:
             print("Failed to connect to Postgres.")
             print(e.__traceback__)
         else:
             print("Connection succesful!")
+
+    async def shutdown(self):
+        await self.http_.close()
+        await self.db.close()
+        await self.logout()
+        await self.close()
 
 
 bot = TakuruBot()
@@ -82,7 +94,6 @@ bot = TakuruBot()
 try:
     bot.loop.run_until_complete(bot.start(config.TOKEN))
 except KeyboardInterrupt:
-    bot.loop.run_until_complete(bot.logout())
-    bot.loop.run_until_complete(bot.close())
+    bot.loop.run_until_complete(bot.shutdown())
 
     print("\n\nLogged out!")

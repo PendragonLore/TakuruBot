@@ -30,8 +30,7 @@ class Markov(commands.Cog):
     async def markovlogging(self, message):
         prefixes = [".", "f?", "h?", "!", "mh!",
                     ";;", "=", "--", "%", "t!",
-                    "m!", "mt!"
-                    ]
+                    "m!", "mt!"]
         if not message.content:
             pass
         elif any(message.content.lower().startswith(prefix) for prefix in prefixes):

@@ -39,31 +39,27 @@ class Web(commands.Cog):
         """Search a gif on Giphy.
         The search limit is 5 GIFs."""
         async with ctx.channel.typing():
-            async with aiohttp.ClientSession(loop=self.bot.loop) as session:
-                lmt = 5
-                base = "http://api.giphy.com/v1/gifs"
-                gif = "+".join(gif)
+            lmt = 5
+            base = "http://api.giphy.com/v1/gifs"
+            gif = "+".join(gif)
 
-                async with session.get(f"{base}/search?q={gif}&api_key={config.GIPHY_KEY}&limit={lmt}") as r:
-                    if r.status == 200:
-                        try:
-                            data = (await r.json())["data"]
-                            to_send = []
+            async with self.bot.http_.get(f"{base}/search?q={gif}&api_key={config.GIPHY_KEY}&limit={lmt}") as r:
+                if r.status == 200:
+                    data = (await r.json())["data"]
+                    to_send = []
 
-                            for entry in data:
-                                url = entry["images"]["original"]["url"]
-                                to_send.append(url)
-                        except KeyError:
-                            return await ctx.send("Search returned nothing.")
-                        finally:
-                            await session.close()
+                    for entry in data:
+                        url = entry["images"]["original"]["url"]
+                        to_send.append(url)
 
-                    else:
-                        await session.close()
-                        return await ctx.send("Status error.")
+                else:
+                    return await ctx.send("Status error.")
 
-                    _gif = random.choice(to_send)
-                    search = gif.replace("+", " ")
+                if len(to_send) == 0:
+                    return await ctx.send("Search returned nothing.")
+
+                _gif = random.choice(to_send)
+                search = gif.replace("+", " ")
 
         await self.generate_gif_embed(ctx, _gif, search)
 
@@ -73,37 +69,35 @@ class Web(commands.Cog):
         """Search a gif on Tenor.
         The search limit is 5 GIFs."""
         async with ctx.channel.typing():
-            async with aiohttp.ClientSession(loop=self.bot.loop) as session:
-                lmt = 5
-                base = "https://api.tenor.com/v1/"
+            lmt = 5
+            base = "https://api.tenor.com/v1/"
 
-                async with session.get(f"{base}anonid?key={config.TENOR_KEY}") as r:
-                    if r.status == 200:
-                        anon_id = (await r.json())["anon_id"]
-                    else:
-                        return await ctx.send("Status code error.")
+            async with self.bot.http_.get(f"{base}anonid?key={config.TENOR_KEY}") as r:
+                if r.status == 200:
+                    anon_id = (await r.json())["anon_id"]
+                else:
+                    return await ctx.send("Status code error.")
 
-                search = "-".join(gif)
-                async with session.get(
-                        f"{base}search?key={config.TENOR_KEY}&q={search}&anon_id={anon_id}&limit={lmt}") as r:
-                    if r.status == 200:
-                        to_send = []
+            search = "-".join(gif)
+            async with self.bot.http_.get(
+                    f"{base}search?key={config.TENOR_KEY}&q={search}&anon_id={anon_id}&limit={lmt}") as r:
 
-                        try:
-                            data = (await r.json())["results"]
-                            for entry in data:
-                                url = entry["media"][0]["gif"]["url"]
-                                to_send.append(url)
-                        except KeyError:
-                            return await ctx.send("Search returned nothing.")
-                        finally:
-                            await session.close()
-                    else:
-                        await session.close()
-                        return await ctx.send("Status error.")
+                if r.status == 200:
+                    to_send = []
+                    data = (await r.json())["results"]
 
-                    _gif = random.choice(to_send)
-                    search = search.replace("-", " ")
+                    for entry in data:
+                        url = entry["media"][0]["gif"]["url"]
+                        to_send.append(url)
+
+                else:
+                    return await ctx.send("Status error.")
+
+                if len(to_send) == 0:
+                    return await ctx.send("Search returned nothing.")
+
+                _gif = random.choice(to_send)
+                search = search.replace("-", " ")
 
         await self.generate_gif_embed(ctx, _gif, search)
 
