@@ -73,7 +73,7 @@ class TakuruBot(commands.Bot):
         self.http_ = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
 
         print(f"\n\n### POSTGRES CONNECTION ###\n\n")
-        
+
         try:
             print(f"Connecting to postgres...")
 
