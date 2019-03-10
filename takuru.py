@@ -12,7 +12,7 @@ class TakuruBot(commands.Bot):
     def __init__(self):
         super().__init__(**config.bot)
 
-        self.loop.create_task(self.setup())
+        self.loop.create_task(self.botvar_setup())
         self.wavelink = wavelink.Client(self)
         self.http_headers = {
             'User-Agent': "TakuruBot"
@@ -69,13 +69,17 @@ class TakuruBot(commands.Bot):
         print(f"I just got removed from {guild.name} (ID: {guild.id} "
               f"Owner: {guild.owner})")
 
-    async def setup(self):
+    async def botvar_setup(self):
         self.http_ = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
 
         print(f"\n\n### POSTGRES CONNECTION ###\n\n")
+        
         try:
             print(f"Connecting to postgres...")
-            self.db = await asyncpg.create_pool(**config.db, loop=self.loop)
+
+            pool = await asyncpg.create_pool(**config.db, loop=self.loop)
+            self.db = await pool.acquire()
+
         except asyncpg.PostgresConnectionError as e:
             print("Failed to connect to Postgres.")
             print(e.__traceback__)
@@ -84,7 +88,6 @@ class TakuruBot(commands.Bot):
 
     async def shutdown(self):
         await self.http_.close()
-        await self.db.close()
         await self.logout()
         await self.close()
 
