@@ -8,16 +8,19 @@ class Helper(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def chunks(self, l, n):
+    @staticmethod
+    def chunks(l, n):
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    def clean_prefix(self, ctx):
+    @staticmethod
+    def clean_prefix(ctx: commands.Context):
         user = ctx.guild.me if ctx.guild else ctx.bot.user
 
         return ctx.prefix.replace(user.mention, "@" + user.display_name)
 
-    def cmd_signature(self, command: commands.Command):
+    @staticmethod
+    def cmd_signature(command: commands.Command):
         parent = command.full_parent_name
         if len(command.aliases) > 0:
             aliases = "|".join(command.aliases)

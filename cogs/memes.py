@@ -18,7 +18,8 @@ class Memes(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def chunks(self, l, n):
+    @staticmethod
+    def chunks(l, n):
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
@@ -117,7 +118,7 @@ class Memes(commands.Cog):
         if member:
             return await ctx.send("The user is still in the guild.")
 
-        sql = """UPDATE memes 
+        sql = """UPDATE memes
                     SET ownerid = $1 
                     WHERE name = $2 
                     AND ServerID = $3;
@@ -137,7 +138,7 @@ class Memes(commands.Cog):
         if not content:
             return await ctx.send("Content cannot be empty.")
 
-        check_sql = """SELECT name 
+        check_sql = """SELECT name
                             FROM memes 
                             WHERE name = $2 
                             AND serverid = $1;
@@ -147,7 +148,7 @@ class Memes(commands.Cog):
         if check is not None:
             return await ctx.send(f"Meme {name} already exists.")
 
-        sql = """INSERT INTO memes 
+        sql = """INSERT INTO memes
                         (serverid, name, content, ownerid) 
                         VALUES 
                         ($1, $2, $3, $4);
@@ -162,7 +163,7 @@ class Memes(commands.Cog):
     async def meme_list(self, ctx):
         """Get a list of all the guild's memes."""
 
-        sql = """SELECT * 
+        sql = """SELECT *
                     FROM memes 
                     WHERE ServerID=$1;
                 """
@@ -194,7 +195,7 @@ class Memes(commands.Cog):
         if check != ctx.author.id:
             return await ctx.send("You are not the meme's owner.")
 
-        sql = """DELETE 
+        sql = """DELETE
                     FROM memes 
                     WHERE ServerID=$1 
                     AND name=$2 ;
