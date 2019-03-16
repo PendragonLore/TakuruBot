@@ -21,6 +21,7 @@ class General(commands.Cog):
             `feh`
             `dl`
         Other arguments will be saved but ignored, in the future they will be used for the `Other FC` section."""
+
         system_query = await self.bot.db.fetchval("SELECT * FROM fc WHERE userid=$1 AND system=$2",
                                                   ctx.message.author.id,
                                                   system, column=2)
@@ -35,7 +36,6 @@ class General(commands.Cog):
             await ctx.send(f"{system} {fc} was recorded in your user data.")
 
     @commands.command(name="userinfo", aliases=["user"])
-    @commands.guild_only()
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def user_info(self, ctx, mention: discord.Member = None):
         """Display basic user info and friendcodes, mentions are also valid.
@@ -99,8 +99,10 @@ class General(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def invite(self, ctx):
         """Send an invite for the bot."""
-        await ctx.send(discord.utils.oauth_url(self.bot.user.id, permissions=discord.Permissions.all()))
 
+        await ctx.send(discord.utils.oauth_url(self.bot.user.id, permissions=discord.Permissions(37055814)))
+
+    # TODO make this less shit
     @commands.command(name="avatar", aliases=["av", "pfp"])
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def avatar_url(self, ctx, *mentions: discord.Member):
@@ -111,8 +113,8 @@ class General(commands.Cog):
             counter = 0
             for author in mentions:
                 counter += 1
-                username = f"{author.name}#{author.discriminator}"
-                embed = discord.Embed(colour=discord.Colour(0xa01b1b), title=username,
+                username = f"{author}"
+                embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62), title=username,
                                       description=f"[Avatar URL Link]({author.avatar_url})",
                                       timestamp=datetime.datetime.utcnow())
 
@@ -124,7 +126,7 @@ class General(commands.Cog):
                     return
         else:
 
-            embed = discord.Embed(colour=discord.Colour(0xa01b1b), title=str(ctx.author),
+            embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62), title=str(ctx.author),
                                   description=f"[Avatar URL Link]({ctx.author.avatar_url})",
                                   timestamp=datetime.datetime.utcnow())
 
@@ -137,17 +139,20 @@ class General(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def eight_ball(self, ctx):
         """\"I guess I'll have to answer your dumb questions.\""""
+
         await ctx.send(f"**{ctx.message.author.name}** | {random.choice(self.bot.possible_responses)}")
 
     @commands.command(name="ping")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def ping(self, ctx):
         """It's like pings but pongs without pings."""
+
         start = time.perf_counter()
         message = await ctx.send("Ping...")
         end = time.perf_counter()
 
-        await message.edit(content=f"Pong! Latency is: {(end - start) * 1000:.2f}ms, websocket latency is {self.bot.latency * 1000:.2f}ms")
+        await message.edit(content=f"Pong! Latency is: {(end - start) * 1000:.2f}ms, "
+                                   f"websocket latency is {self.bot.latency * 1000:.2f}ms")
 
 
 def setup(bot):

@@ -4,8 +4,13 @@ from discord.ext import commands
 
 
 class CommandHandler(commands.Cog):
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, bot):
+        self.bot = bot
+
+    def bot_check(self, ctx):
+        if ctx.guild is not None:
+            return True
+        raise commands.NoPrivateMessage
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -14,38 +19,39 @@ class CommandHandler(commands.Cog):
 
         if isinstance(error, commands.NoPrivateMessage):
             try:
-                return await ctx.send(f"{ctx.command} cannot be used in private messages.")
-            except discord.Forbidden:
+                return await ctx.send(f"This bot is guild only.")
+            except discord.HTTPException:
                 pass
 
         if isinstance(error, commands.DisabledCommand):
-            return await ctx.send(f"{ctx.command} has been disabled.")
+            return await ctx.send(f":no_entry: | {ctx.command} has been disabled.")
 
         if isinstance(error, commands.MissingPermissions):
             perms = ", ".join(error.missing_perms)
-            return await ctx.send(f"You lack the {perms} permission(s).")
+            return await ctx.send(f":no_entry: | You lack the {perms} permission(s).")
 
         if isinstance(error, commands.BotMissingPermissions):
             perms = ", ".join(error.missing_perms)
-            return await ctx.send(f"I lack the {perms} permission(s).")
+            return await ctx.send(f":warning: | I lack the {perms} permission(s).")
 
         if isinstance(error, commands.NotOwner):
-            return await ctx.send("You are not my owner.")
+            return await ctx.send(":no_entry: | You are not my owner.")
 
         if isinstance(error, commands.CommandOnCooldown):
-            cooldown = round(error.retry_after, 2)
-            return await ctx.send(f"The command is currently on cooldown, retry in {cooldown} seconds")
+            return await ctx.send(
+                f":warning: | The command is currently on cooldown, retry in {error.retry_after:.2f} seconds")
 
-        if isinstance(error, commands.BadArgument) or isinstance(error, commands.MissingRequiredArgument):
-            return await ctx.send("Missing or bad argument.")
+        if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument) or isinstance(
+                error, commands.ArgumentParsingError):
+            args = " | ".join(error.args)
+            return await ctx.send(f":warning: | {args.capitalize()}")
 
-        traceback.print_exception(type(error), error, error.__traceback__)
-
-        if hasattr(ctx.command, "on_error"):
-            return
+        else:
+            traceback.print_exception(type(error), error, error.__traceback__)
+            return await ctx.send(error.args)
 
         # await ctx.send(f"An uncaught error occured in {ctx.command}")
 
 
-def setup(client):
-    client.add_cog(CommandHandler(client))
+def setup(bot):
+    bot.add_cog(CommandHandler(bot))

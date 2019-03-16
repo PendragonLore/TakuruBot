@@ -1,30 +1,26 @@
-import config
 import random
 import re
 import aiofiles
+import config
 from discord.ext import commands
 
 
 class Markov(commands.Cog):
     """This cog handles the Markov logging and chaining of this bot.
-    The functions are available only to specific servers selected by the owner."""
+    The functions are available only to specific guilds selected by the owner."""
 
     def __init__(self, bot):
         self.bot = bot
         self.punctuation = ["!", ".", "?", "-"]
 
     async def cog_check(self, ctx):
-        if ctx.guild.id != 477245169167499274:
-            return False
-
-        return True
+        return ctx.guild.id in config.markov_guilds
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author == self.bot.user:  # Don't respond to yourself
+        if message.author.bot:
             return
-        if message.author.bot:  # Don't respond to other bots
-            return
+
         await self.markovlogging(message)
 
     async def markovlogging(self, message):
@@ -35,7 +31,7 @@ class Markov(commands.Cog):
             pass
         elif any(message.content.lower().startswith(prefix) for prefix in prefixes):
             pass
-        elif message.guild.id != 477245169167499274:
+        elif message.guild.id not in (477245169167499274, 367993886070669354):
             pass
         else:
             random_int = random.randint(1, 602)
@@ -49,15 +45,17 @@ class Markov(commands.Cog):
 
                 for key, value in config.ignored_mentions.items():
                     _message = _message.replace(key, value)
+
                 await markovdb.write(f"{_message}{dot}\n")
                 await markovdb.close()
 
     @commands.command()
     @commands.is_owner()
     async def test_log(self, ctx):
-        """An owner only test markov chain.
-        """
+        """An owner only test markov chain."""
+
         randomized_int = random.randint(1, 602)
+
         t_path = f"cogs/utils/markov/markov ({randomized_int}).txt"
         async with aiofiles.open(t_path) as file:
             word_dictionary = await self.learn(await file.read())
@@ -67,8 +65,8 @@ class Markov(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def mlog(self, ctx, *message_to_log):
         """Respond to a message with a Markov chain.
-        The chain is composed out of 602 txt files.
-        """
+        The chain is composed out of 602 txt files."""
+
         if message_to_log:
             message = " ".join(message_to_log)
             randomized_int = random.randint(1, 602)
@@ -81,6 +79,7 @@ class Markov(commands.Cog):
 
                 for key, value in config.ignored_mentions.items():
                     message.replace(key, value)
+
                 markovdb.write(f"{message}{dot}\n")
 
         await self.markovgen(ctx)
@@ -103,21 +102,22 @@ class Markov(commands.Cog):
                 result.replace("\r\n", '')
                 last_word = new_word
 
-                if len(result.split(" ")) > random.randint(3, 8) and any(punct in result[-2:] for punct in self.punctuation):
+                if len(result.split(" ")) > random.randint(3, 8) and any(
+                        punct in result[-2:] for punct in self.punctuation):
                     punctuation = True
 
                 counter += 1
 
-                if counter == 40:
+                if counter >= 40:
                     return await ctx.send("No punct found")
+
         result = " ".join(result.split())
         result = result[0].upper() + result[1:]
         await ctx.send(result)
 
-    @staticmethod
-    async def learn(_input):
+    async def learn(self, _input):
         _dict = {}
-        word_tokens = re.split("[\n]", _input)
+        word_tokens = re.split(" |\n", _input)
 
         for i in range(0, len(word_tokens) - 1):
             current_word = word_tokens[i]
@@ -157,8 +157,7 @@ class Markov(commands.Cog):
             rnd = random.randint(0, len(candidates_normalised) - 1)
             return candidates_normalised[rnd]
 
-    @staticmethod
-    async def pick_random(_dict):
+    async def pick_random(self, _dict):
         random_num = random.randint(0, len(_dict) - 1)
         new_word = list(_dict.keys())[random_num]
         return new_word
@@ -167,7 +166,7 @@ class Markov(commands.Cog):
     async def mlog_handler(self, ctx, error):
         if isinstance(error, commands.CheckFailure):
             return await ctx.send(
-                "I'm sorry, but the markov chaining functions and logging of this bot is, for now, only enabled on specific (italian) servers selected by my owner.", )
+                "I'm sorry, but the markov chaining functions and logging of this bot is, for now, only enabled on specific guilds selected by my owner.", )
 
 
 def setup(bot):

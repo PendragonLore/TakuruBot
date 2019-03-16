@@ -8,16 +8,12 @@ class Moderator(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_check(self, ctx):
-        if ctx.guild is not None:
-            return True
-        raise commands.NoPrivateMessage
-
     @commands.command(name="clear", aliases=["purge", "clean", "prune"])
     @commands.has_permissions(manage_messages=True)
     async def bulk_delete(self, ctx, amount=5):
-        """Bulk-deletes a certain amout of messages in the current channel.
+        """Bulk-delete a certain amout of messages in the current channel.
         5 is the default amount."""
+
         purge = await ctx.channel.purge(limit=amount)
 
         try:
@@ -30,7 +26,8 @@ class Moderator(commands.Cog):
     @commands.command(name="kick")
     @commands.has_permissions(kick_members=True)
     async def kick(self, ctx, *members: discord.Member):
-        """Kicks a single or multiple users."""
+        """Kick a single or multiple users."""
+
         if len(members) == 0:
             return await ctx.send("You must mention at least a user to ban.")
 
@@ -38,14 +35,14 @@ class Moderator(commands.Cog):
         for u in members:
             await u.kick()
             kicked_users.append(str(u))
-        users = ", ".join(kicked_users)
+        kicked_users = ", ".join(kicked_users)
 
-        await ctx.send(f"Whoops, {users} got kicked!")
+        await ctx.send(f"Whoops, {kicked_users} got kicked!")
 
     @commands.command(name="ban")
     @commands.has_permissions(ban_members=True)
     async def ban(self, ctx, *members: discord.Member):
-        """Bans a single or multiple users."""
+        """Ban a single or multiple users."""
         if len(members) == 0:
             return await ctx.send("You must mention at least an user to ban.")
 
@@ -53,9 +50,9 @@ class Moderator(commands.Cog):
         for user in members:
             await user.ban()
             banned_users.append(f"{user.name}#{user.discriminator}")
-        usrs = ", ".join(banned_users)
+        banned_users = ", ".join(banned_users)
 
-        await ctx.send(f"Whoops, {usrs} got the hammer!")
+        await ctx.send(f"{banned_users} got the hammer!")
 
 
 def setup(bot):

@@ -99,10 +99,13 @@ class Paginator:
         self.paginating = False
 
     async def info(self):
-        embed = discord.Embed(colour=discord.Colour.blurple())
+        embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
+
         embed.set_author(name="Instructions")
+
         embed.description = "This is a reaction paginator; when you react to one of the buttons below " \
                             "the message gets edited. Below you will find what the reactions do."
+
         embed.add_field(name="Previous Page ◀", value="This reaction takes you to the previous page. "
                                                       "If you use this reaction while in the first page it will take"
                                                       " you to the last page.", inline=False)
@@ -112,8 +115,7 @@ class Paginator:
         embed.add_field(name="Selector 🔢", value="This reaction allows you to choose what page to go to.",
                         inline=False)
         embed.add_field(name="Information ℹ", value="This reaction takes you to this page.")
-        embed.add_field(name="Bot Usage 🤖",
-                        value="This reaction takes you to the page on which you can get a guide on how to interpret the help command.")
+
         await self.msg.edit(embed=embed)
 
     def _check(self, reaction, user):
@@ -157,4 +159,5 @@ class Paginator:
 
                 for future in pending:
                     future.cancel()
+
                 await self.execute()

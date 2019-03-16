@@ -10,20 +10,20 @@ from discord.ext import commands
 RURL = re.compile("https?://(?:www\.)?.+")
 
 
-class NotDJ(Exception):
+class NotDJ(commands.CheckFailure):
     pass
 
 
-class NotPlaying(Exception):
+class NotPlaying(commands.CheckFailure):
     pass
 
 
-class NotConnected(Exception):
+class NotConnected(commands.CheckFailure):
     pass
 
 
 class Track(wavelink.Track):
-    """The custom Track instance, added just the requester variable."""
+    """The custom Track instance, added for just the requester variable."""
 
     def __init__(self, id_, info, ctx):
         super().__init__(id_, info)
@@ -52,8 +52,8 @@ class Player(wavelink.Player):
         self.bot.loop.create_task(self.player_loop())
 
     async def player_loop(self):
-        """The main player loop, this loop manages queueing
-        and playing songs."""
+        """The main player loop, this loop manages queueing and playing songs."""
+
         await self.bot.wait_until_ready()
 
         player = self.bot.wavelink.get_player(self.guild_id, cls=Player)
@@ -78,10 +78,11 @@ class Player(wavelink.Player):
 
     async def generate_embed(self, track: wavelink.Track):
         """Generate and send the embed for a track."""
+
         if self.is_looping:
             return None
 
-        embed = discord.Embed(color=discord.Colour.blurple(), title=track.title)
+        embed = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62), title=track.title)
 
         embed.set_image(url=f"https://img.youtube.com/vi/{track.ytid}/maxresdefault.jpg")
         embed.set_author(name=f"Uploader: {track.info['author']}", icon_url=self.bot.user.avatar_url)
@@ -95,6 +96,7 @@ class Player(wavelink.Player):
 
         return await self.context.send("**Now playing:**", embed=embed)
 
+    # TODO make these two checks actually work
     @staticmethod
     def perms_check():
         async def predicate(ctx):
@@ -107,25 +109,17 @@ class Player(wavelink.Player):
             except AttributeError:
                 return False
 
-            #await ctx.send("You are not a DJ or don't have the nece")
+            # await ctx.send("You are not a DJ or don't have the necessary permissions")
             return False
 
         return commands.check(predicate)
 
-    @staticmethod
-    def state_check():
-        async def predicate(ctx):
-            player = ctx.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+    async def state_check(self, ctx):
+        if not self.is_connected:
+            return await ctx.send("The player is not connected.")
 
-            if not player.is_connected:
-                raise NotConnected
-
-            if not player.is_playing:
-                raise NotPlaying
-
-            return True
-
-        return commands.check(predicate)
+        if not self.is_playing:
+            return await ctx.send("The player is not playing anything.")
 
 
 class ReeMusic(commands.Cog, name="Music"):
@@ -135,6 +129,7 @@ class ReeMusic(commands.Cog, name="Music"):
         self.bot = bot
         self.bot.loop.create_task(self.node())
 
+    # Currently useless but I'll leave it here
     async def cog_command_error(self, ctx, error):
         if isinstance(error, NotDJ):
             return await ctx.send("You are not the DJ or lack the necessary permission.")
@@ -145,20 +140,13 @@ class ReeMusic(commands.Cog, name="Music"):
         if isinstance(error, NotPlaying):
             return await ctx.send("Player is not playing anything.")
 
-    async def cog_check(self, ctx):
-        if ctx.guild:
-            return True
-
-        raise commands.NoPrivateMessage
-
     async def node(self):
         await self.bot.wait_until_ready()
 
         node = await self.bot.wavelink.initiate_node(**config.wavelink)
         node.set_hook(self.event_hook)
 
-    @staticmethod
-    async def event_hook(event):
+    async def event_hook(self, event):
         if isinstance(event, wavelink.TrackEnd):
             event.player.next.set()
         elif isinstance(event, wavelink.TrackException):
@@ -166,7 +154,8 @@ class ReeMusic(commands.Cog, name="Music"):
 
     @commands.command(name="connect")
     async def connect(self, ctx, channel: discord.VoiceChannel = None):
-        """Make the bot connect to the voice channel you are in or by mentioning one."""
+        """Make the player connect to the voice channel you are in or by mentioning one."""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
         if not channel:
@@ -206,21 +195,27 @@ class ReeMusic(commands.Cog, name="Music"):
         await ctx.send(f"Added **{track}** to the queue.")
 
     @commands.command()
-    #@Player.state_check()
-    #@Player.perms_check()
+    # @Player.state_check()
+    # @Player.perms_check()
     async def skip(self, ctx):
         """Skip the currently playing song."""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
 
         await ctx.send(f"Skipped the song **{player.current.title}**.")
         await player.stop()
 
     @commands.command(name="disconnect")
-    #@Player.state_check()
-    #@Player.perms_check()
+    # @Player.state_check()
+    # @Player.perms_check()
     async def disconnect(self, ctx):
         """Disconnect and clear the player's queue."""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
 
         try:
             await ctx.send(f"Disconnecting from {ctx.author.voice.channel}.")
@@ -231,18 +226,25 @@ class ReeMusic(commands.Cog, name="Music"):
         await player.destroy()
 
     @commands.command(name="nowplaying", aliases=["np"])
-    #@Player.state_check()
+    # @Player.state_check()
     async def now_playing(self, ctx):
         """Show the currently playing track's info."""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
 
         await player.generate_embed(player.current)
 
     @commands.command(name="queue", aliases=["q"])
-    #@Player.state_check()
+    # @Player.state_check()
     async def queue(self, ctx):
-        """Show the queue."""
+        """Show the player's queue."""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
+
         queue = list(player.queue._queue)
 
         if len(queue) == 0:
@@ -267,10 +269,13 @@ class ReeMusic(commands.Cog, name="Music"):
                 f"**Next track: {queue[0]} added by {queue[0].requester}**")
 
     @commands.command(name="loop")
-    #@Player.state_check()
+    # @Player.state_check()
     async def loop(self, ctx, *, arg="on"):
         """Make the current song loop or stop the loop by adding `off`"""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
 
         if arg.lower() == "off":
             if not player.is_looping:
@@ -286,10 +291,13 @@ class ReeMusic(commands.Cog, name="Music"):
         return await ctx.send("Player is now looping.")
 
     @commands.command(name="setvolume", aliases=["vol", "volume", "setvol"])
-    #@Player.state_check()
+    # @Player.state_check()
     async def set_volume(self, ctx, volume):
         """Set the player's volume, earrapes are encouraged :omegalul:."""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
 
         if not isinstance(volume, int):
             return await ctx.send("Volume must be a number.")
@@ -298,10 +306,13 @@ class ReeMusic(commands.Cog, name="Music"):
         await ctx.send(f"Set player volume to {volume}")
 
     @commands.command(name="pause")
-    #@Player.state_check()
+    # @Player.state_check()
     async def pause(self, ctx, arg="on"):
         """Make the current song loop or resume it by adding `off`"""
+
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.state_check(ctx)
 
         if arg.lower() == "off":
             if not player.paused:
