@@ -33,6 +33,20 @@ class Helper(commands.Cog):
 
         return f"{alias} {command.signature}"
 
+    async def get_subcommands(self, ctx, cog):
+        cmds = []
+
+        for cmd in cog.get_commands():
+            if await self.filter(ctx, cmd) and not cmd.hidden:
+                cmds.append(cmd)
+                try:
+                    for c in cmd.commands:
+                        cmds.append(c)
+                except AttributeError:
+                    pass
+
+        return cmds
+
     async def filter(self, ctx, command):
         try:
             await command.can_run(ctx)
@@ -44,15 +58,8 @@ class Helper(commands.Cog):
     async def all_helper(self, ctx):
         embeds = []
         for name, cog in ctx.bot.cogs.items():
-            cmds = []
-            for cmd in cog.get_commands():
-                if await self.filter(ctx, cmd) and not cmd.hidden:
-                    cmds.append(cmd)
-                    try:
-                        for c in cmd.commands:
-                            cmds.append(c)
-                    except AttributeError:
-                        pass
+
+            cmds = await self.get_subcommands(ctx, cog)
 
             for x in self.chunks(cmds, 8):
                 help_embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
@@ -72,16 +79,8 @@ class Helper(commands.Cog):
 
     async def cog_helper(self, ctx, cog: commands.Cog):
         cog_embeds = []
-        cmds = []
 
-        for cmd in cog.get_commands():
-            if await self.filter(ctx, cmd) and not cmd.hidden:
-                cmds.append(cmd)
-                try:
-                    for c in cmd.commands:
-                        cmds.append(c)
-                except AttributeError:
-                    pass
+        cmds = await self.get_subcommands(ctx, cog)
 
         if not cmds:
             embed = discord.Embed(color=discord.Color.red(),
@@ -111,6 +110,7 @@ class Helper(commands.Cog):
         try:
             cmd = [x for x in command.commands if not x.hidden]
             cmds_ = []
+
             for i in self.chunks(cmd, 6):
                 embed = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
                 embed.set_author(name=command.qualified_name)
