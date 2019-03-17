@@ -1,6 +1,6 @@
 import random
 import re
-import aiofiles
+import aiofiles # Using aiofiles because I'm way too lazy to rewrite this for DB integration.
 import config
 from discord.ext import commands
 
