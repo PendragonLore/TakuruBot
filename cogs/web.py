@@ -14,7 +14,7 @@ class NoMoreAPIKeys(Exception):
 
 
 class Web(commands.Cog):
-    """Interact with the interweb!"""
+    """Interact with the web I guess."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -36,9 +36,9 @@ class Web(commands.Cog):
         await Paginator(ctx, embeds).paginate()
 
     @commands.command(name="giphy")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def giphy(self, ctx, *, gif):
-        """Search 5 GIFs on Giphy."""
+        """Search 5 GIFs on Giphy"""
 
         await ctx.trigger_typing()
         to_send = []
@@ -56,9 +56,9 @@ class Web(commands.Cog):
         await self.generate_gif_embed(ctx, to_send, gif)
 
     @commands.command(name="tenor")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def tenor(self, ctx, *, gif):
-        """Search 5 GIFs on Tenor."""
+        """Search 5 GIFs on Tenor"""
 
         await ctx.trigger_typing()
 
@@ -79,6 +79,7 @@ class Web(commands.Cog):
         await self.generate_gif_embed(ctx, to_send, gif)
 
     @commands.command(name="urbandictionary", aliases=["ud", "urban"])
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def urban_dictionary(self, ctx, *, word):
         """Get a word's definition on Urban Dictionary"""
 
@@ -130,6 +131,7 @@ class Web(commands.Cog):
             return await self.bot.loop.run_in_executor(None, to_run)
 
         await ctx.trigger_typing()
+
         try:
             data = (await get_data())["entries"][0]
         except youtube_dl.utils.DownloadError:
@@ -151,12 +153,12 @@ class Web(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.group(aliases=["g"], invoke_without_command=True, case_insensitive=True)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def google(self, ctx):
         """Google search related function.
         Type help google to know more about this group."""
 
-        helper = self.bot.get_cog("Helper")
-        await Paginator(ctx, await helper.command_helper(ctx.command)).paginate()
+        await ctx.send_help("google")
 
     @cache(maxsize=128)
     async def get_search(self, ctx, query, is_image=False):
@@ -182,6 +184,7 @@ class Web(commands.Cog):
                     raise NoMoreAPIKeys("No more API keys to use")
 
     @google.command(name="search", aliases=["s"])
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def google_search(self, ctx, *, query):
         """Search a query on google.
         Get the description, thumbnail and URL link of the page.
@@ -206,6 +209,7 @@ class Web(commands.Cog):
         await ctx.send("Here's your search", embed=embed)
 
     @google.command(name="image_search", aliases=["i"])
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def google_image_search(self, ctx, *, query):
         """Search a query on google images.
         Get the image and URL link.

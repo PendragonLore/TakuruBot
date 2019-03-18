@@ -97,7 +97,7 @@ class Player(wavelink.Player):
 
         return await self.context.send("**Now playing:**", embed=embed)
 
-    # TODO make these two checks actually work
+    # TODO make this check actually work
     @staticmethod
     def perms_check():
         async def predicate(ctx):
@@ -147,10 +147,14 @@ class ReeMusic(commands.Cog, name="Music"):
             print(event.error)
 
     @commands.command(name="connect")
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def connect(self, ctx, channel: discord.VoiceChannel = None):
         """Make the player connect to the voice channel you are in or by mentioning one."""
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        if player.is_connected:
+            return await ctx.send("The player is already connected.")
 
         if not channel:
             try:
@@ -164,6 +168,7 @@ class ReeMusic(commands.Cog, name="Music"):
         player.context = ctx
 
     @commands.command()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def play(self, ctx, *, query):
         """Search for and add a song to the queue."""
 
@@ -191,6 +196,7 @@ class ReeMusic(commands.Cog, name="Music"):
     @commands.command()
     # @Player.state_check()
     # @Player.perms_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def skip(self, ctx):
         """Skip the currently playing song."""
 
@@ -208,6 +214,7 @@ class ReeMusic(commands.Cog, name="Music"):
     @commands.command(name="disconnect")
     # @Player.state_check()
     # @Player.perms_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def disconnect(self, ctx):
         """Disconnect and clear the player's queue."""
 
@@ -226,6 +233,7 @@ class ReeMusic(commands.Cog, name="Music"):
 
     @commands.command(name="nowplaying", aliases=["np"])
     # @Player.state_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def now_playing(self, ctx):
         """Show the currently playing track's info."""
 
@@ -241,6 +249,7 @@ class ReeMusic(commands.Cog, name="Music"):
 
     @commands.command(name="queue", aliases=["q"])
     # @Player.state_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def queue(self, ctx):
         """Show the player's queue."""
 
@@ -277,6 +286,7 @@ class ReeMusic(commands.Cog, name="Music"):
 
     @commands.command(name="loop")
     # @Player.state_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def loop(self, ctx, *, arg="on"):
         """Make the current song loop or stop the loop by adding `off`"""
 
@@ -300,6 +310,7 @@ class ReeMusic(commands.Cog, name="Music"):
 
     @commands.command(name="setvolume", aliases=["vol", "volume", "setvol"])
     # @Player.state_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def set_volume(self, ctx, volume):
         """Set the player's volume, earrapes are encouraged :omegalul:."""
 
@@ -319,6 +330,7 @@ class ReeMusic(commands.Cog, name="Music"):
 
     @commands.command(name="pause")
     # @Player.state_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def pause(self, ctx, arg="on"):
         """Make the current song loop or resume it by adding `off`"""
 

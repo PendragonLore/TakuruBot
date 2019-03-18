@@ -10,6 +10,7 @@ class Moderator(commands.Cog):
 
     @commands.command(name="clear", aliases=["purge", "clean", "prune"])
     @commands.has_permissions(manage_messages=True)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def bulk_delete(self, ctx, amount=5):
         """Bulk-delete a certain amout of messages in the current channel.
         5 is the default amount."""
@@ -25,6 +26,7 @@ class Moderator(commands.Cog):
 
     @commands.command(name="kick")
     @commands.has_permissions(kick_members=True)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def kick(self, ctx, *members: discord.Member):
         """Kick a single or multiple users."""
 
@@ -41,6 +43,7 @@ class Moderator(commands.Cog):
 
     @commands.command(name="ban")
     @commands.has_permissions(ban_members=True)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def ban(self, ctx, *members: discord.Member):
         """Ban a single or multiple users."""
         if len(members) == 0:

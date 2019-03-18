@@ -23,21 +23,22 @@ class Memes(commands.Cog):
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    async def generate_embeds(self, ctx, memes_list):
+    async def generate_embeds(self, ctx, meme_list):
         embeds = []
 
-        for x in list(self.chunks(list(memes_list), 20)):
+        for x in self.chunks(meme_list, 20):
             meme_embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
             fin_memes = []
 
             for y in x:
                 fin_memes.append(y)
+
             meme_embed.description = f"\n".join(fin_memes)
             embeds.append(meme_embed)
 
             for index, e in enumerate(embeds):
                 e.set_footer(
-                    text=f"Page {index + 1} of {len(embeds)} | Total Memes: {len(memes_list)}")
+                    text=f"Page {index + 1} of {len(embeds)} | Total Memes: {len(meme_list)}")
 
         await Paginator(ctx, embeds).paginate()
 
@@ -46,7 +47,7 @@ class Memes(commands.Cog):
                             FROM memes
                             WHERE serverid=$1 AND name % $2
                             ORDER BY similarity(name, $2) DESC
-                            LIMIT 5;
+                            LIMIT 15;
                         """
 
         ty = await self.bot.db.fetch(search, ctx.guild.id, name)
@@ -59,17 +60,17 @@ class Memes(commands.Cog):
         return results
 
     @commands.group(name="meme", invoke_without_command=True, case_insensitive=True)
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme(self, ctx, *, meme=None):
         """Memes related functions, all persistent and guild-locked."""
 
         if not meme or meme.lower() == "help":
-            helper = self.bot.get_cog("Helper")
-            await Paginator(ctx, await helper.command_helper(ctx.command)).paginate()
+            await ctx.send_help("meme")
 
         await ctx.invoke(self.meme_send, name=meme)
 
     @meme.command(name="get", aliases=["send"])
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_send(self, ctx, *, name):
         """Search and send a meme."""
 
@@ -100,7 +101,7 @@ class Memes(commands.Cog):
         await ctx.send(meme)
 
     @meme.command(name="claim")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_claim(self, ctx, *, meme):
         """Get the ownership of a meme.
         The original owner must be out of the guild."""
@@ -129,14 +130,11 @@ class Memes(commands.Cog):
         await ctx.send("You are now the owner of that meme.")
 
     @meme.command(name="add")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_add(self, ctx, name, *, content):
         """Adds a meme."""
 
         name = name.lower()
-
-        if not content:
-            return await ctx.send("Content cannot be empty.")
 
         check_sql = """SELECT name
                             FROM memes 
@@ -159,7 +157,7 @@ class Memes(commands.Cog):
         await ctx.send(f"Succesfuly added meme {name}.\n\nContent is {content}")
 
     @meme.command(name="list", aliases=["lis"])
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_list(self, ctx):
         """Get a list of all the guild's memes."""
 
@@ -183,7 +181,7 @@ class Memes(commands.Cog):
         await self.generate_embeds(ctx, memes_list)
 
     @meme.command(name="remove", aliases=["delete", "del"])
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_remove(self, ctx, *, name):
         """Delete a meme, you must be the owner of it."""
 
@@ -206,13 +204,14 @@ class Memes(commands.Cog):
         await ctx.send(f"Succesfully deleted meme {name}.")
 
     @meme.command(name="search")
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_search(self, ctx, *, query):
         """Searches for a meme.
         The query must be at least 3 characters."""
 
         results = await self.round_search(ctx, query)
 
-        if results is None:
+        if not results:
             return await ctx.send("Search returned nothing.")
 
         results.sort()
@@ -220,13 +219,11 @@ class Memes(commands.Cog):
 
         for index, r in enumerate(results):
             memes.append(f"{index + 1}. {r}")
-        
-        if len(memes) == 0:
-            return await ctx.send("Search returned nothing.")
 
         await self.generate_embeds(ctx, memes)
 
     @meme.command(name="edit")
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_edit(self, ctx, name, *, new_content):
         """Edit a meme's content, you must be the owner of it."""
 
@@ -259,6 +256,7 @@ class Memes(commands.Cog):
         return check
 
     @meme.command(name="info")
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_info(self, ctx, *, meme):
         """Get a meme's info."""
 

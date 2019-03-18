@@ -12,7 +12,7 @@ class General(commands.Cog):
         self.bot = bot
 
     @commands.command(name="setfc", aliases=["setfriendcode"])
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def set_friendcode(self, ctx, system, fc):
         """Sets a friendcode to display in userinfo.
         Current valid arguments are:
@@ -36,7 +36,7 @@ class General(commands.Cog):
             await ctx.send(f"{system} {fc} was recorded in your user data.")
 
     @commands.command(name="userinfo", aliases=["user"])
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def user_info(self, ctx, mention: discord.Member = None):
         """Display basic user info and friendcodes, mentions are also valid.
         Friendcodes are set through setfc."""
@@ -96,7 +96,7 @@ class General(commands.Cog):
 +        DL FC      :  {fcs[3]}```""")
 
     @commands.command(name="invite")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def invite(self, ctx):
         """Send an invite for the bot."""
 
@@ -104,7 +104,7 @@ class General(commands.Cog):
 
     # TODO make this less shit
     @commands.command(name="avatar", aliases=["av", "pfp"])
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def avatar_url(self, ctx, *mentions: discord.Member):
         """Get yours or some mentioned users' profile picture.
         Limit is 3 per command."""
@@ -136,14 +136,14 @@ class General(commands.Cog):
 
     # TODO add more responses
     @commands.command(name="8ball")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def eight_ball(self, ctx):
         """\"I guess I'll have to answer your dumb questions.\""""
 
         await ctx.send(f"**{ctx.message.author.name}** | {random.choice(self.bot.possible_responses)}")
 
     @commands.command(name="ping")
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def ping(self, ctx):
         """It's like pings but pongs without pings."""
 

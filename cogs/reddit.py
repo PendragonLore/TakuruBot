@@ -11,12 +11,13 @@ class Reddit(commands.Cog):
         self.bot = bot
 
     @commands.group(name="reddit", aliases=["r"], invoke_without_command=True, case_insensitive=True)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def reddit_(self, ctx):
-        helper = self.bot.get_cog("Helper")
-        await Paginator(ctx, await helper.command_helper(ctx.command)).paginate()
+        await ctx.send_help("reddit")
 
     # this is a mess but idc
     @reddit_.command(name="search", aliases=["s"])
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def reddit_search(self, ctx, *, query):
         """Search for a post on Reddit."""
 
@@ -80,7 +81,7 @@ class Reddit(commands.Cog):
             dict_data["title"] = data["title"]
             dict_data["txt"] = data["selftext"]
             try:
-                dict_data["text_content"] = data["sefltext"][:1020] + "..." if len(data["selftext"]) > 1024 else data[
+                dict_data["text_content"] = data["selftext"][:1020] + "..." if len(data["selftext"]) > 1024 else data[
                     "selftext"]
             except KeyError:
                 dict_data["text_content"] = None

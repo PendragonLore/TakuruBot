@@ -62,7 +62,7 @@ class Markov(commands.Cog):
             await ctx.send(word_dictionary)
 
     @commands.command()
-    @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
+    @commands.cooldown(1, 3, commands.BucketType.user)
     async def mlog(self, ctx, *message_to_log):
         """Respond to a message with a Markov chain.
         The chain is composed out of 602 txt files."""
@@ -85,7 +85,6 @@ class Markov(commands.Cog):
         await self.markovgen(ctx)
 
     async def markovgen(self, ctx):
-
         result = ""
         randomized_int = random.randint(1, 602)
         path = f"cogs/utils/markov/markov ({randomized_int}).txt"

@@ -20,8 +20,10 @@ class TakuruHelpCommand(commands.HelpCommand):
     def set_pages_number(self, embeds):
         for n, a in enumerate(embeds):
             a.set_footer(text=f"Page {n + 1} of {len(embeds)}")
-
-        return embeds
+    
+    def get_group_commands(self, group, e):
+        for sub in group.commands:
+            e.add_field(name=self.get_command_signature(sub), value=sub.help, inline=False)
 
     def get_command_signature(self, command):
         parent = command.full_parent_name
@@ -67,9 +69,12 @@ class TakuruHelpCommand(commands.HelpCommand):
                 for c in cmd:
                     e.add_field(name=self.get_command_signature(c),
                                 value=c.help, inline=False)
+                    if isinstance(c, commands.Group):
+                        self.get_group_commands(c, e)
+                        
                 embeds.append(e)
 
-            embeds = self.set_pages_number(embeds)
+            self.set_pages_number(embeds)
 
         await Paginator(self.context, embeds).paginate()
 
@@ -79,19 +84,21 @@ class TakuruHelpCommand(commands.HelpCommand):
         embeds = []
 
         if cmd_filter:
-            for n, i in enumerate(self.chunks(cmd_filter, 6)):
+            for i in self.chunks(cmd_filter, 6):
                 e = self.create_help_embed()
 
                 e.title = f"Category: {cog.qualified_name}"
-                e.description = cog.description or "No description, hope you understand anyway"
-                e.set_footer(text=f"Page {n + 1}")
+                e.description = cog.description or "No description, hope you understand anyway."
 
                 for x in i:
                     e.add_field(name=self.get_command_signature(x), value=x.help, inline=False)
 
+                    if isinstance(x, commands.Group):
+                        self.get_group_commands(x, e)
+
                 embeds.append(e)
 
-            embeds = self.set_pages_number(embeds)
+            self.set_pages_number(embeds)
 
         await Paginator(self.context, embeds).paginate()
 
@@ -110,8 +117,11 @@ class TakuruHelpCommand(commands.HelpCommand):
                     for y in x:
                         e.add_field(name=self.get_command_signature(y), value=y.help, inline=False)
 
+                        if isinstance(y, commands.Group):
+                            self.get_group_commands(y, e)
+
                     embeds.append(e)
 
-                embeds = self.set_pages_number(embeds)
+                self.set_pages_number(embeds)
 
         await Paginator(self.context, embeds).paginate()

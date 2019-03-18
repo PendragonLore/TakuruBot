@@ -131,7 +131,7 @@ class TakuruBot(commands.Bot):
 bot = TakuruBot()
 
 try:
-    bot.loop.run_until_complete(bot.start(config.KURUSU_TOKEN))
+    bot.loop.run_until_complete(bot.start(config.TAKURU_TOKEN))
 except KeyboardInterrupt:
     bot.loop.run_until_complete(bot.shutdown())
 
