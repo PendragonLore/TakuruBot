@@ -41,14 +41,19 @@ class CommandHandler(commands.Cog):
             return await ctx.send(
                 f":warning: | The command is currently on cooldown, retry in {error.retry_after:.2f} seconds")
 
-        if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument) or isinstance(
-                error, commands.ArgumentParsingError):
+        if isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument, commands.TooManyArguments)):
             args = " | ".join(error.args)
             return await ctx.send(f":warning: | {args.capitalize()}")
 
+        if isinstance(error, commands.CheckFailure):
+            return
+            
         else:
             traceback.print_exception(type(error), error, error.__traceback__)
-            return await ctx.send(error.args)
+            args = " | ".join(error.args)
+            owner = self.bot.get_user(self.bot.owner_id)
+            
+            return await owner.send(f"```py\nEXCEPTION IN {ctx.command}\n\n{error}```")
 
         # await ctx.send(f"An uncaught error occured in {ctx.command}")
 

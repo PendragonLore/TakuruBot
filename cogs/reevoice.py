@@ -70,6 +70,7 @@ class Player(wavelink.Player):
                     song = await self.queue.get()
             else:
                 song = await self.queue.get()
+
             await player.play(song)
 
             self.now_playing = await self.generate_embed(song)
@@ -113,14 +114,7 @@ class Player(wavelink.Player):
             return False
 
         return commands.check(predicate)
-
-    async def state_check(self, ctx):
-        if not self.is_connected:
-            return await ctx.send("The player is not connected.")
-
-        if not self.is_playing:
-            return await ctx.send("The player is not playing anything.")
-
+        
 
 class ReeMusic(commands.Cog, name="Music"):
     """Play music in voice chat or whatever."""
@@ -202,7 +196,11 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not player.is_connected:
+            return await ctx.send("The player is not connected.")
+
+        if not player.is_playing:
+            return await ctx.send("The player is not playing anything.")
 
         await ctx.send(f"Skipped the song **{player.current.title}**.")
         await player.stop()
@@ -215,7 +213,8 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not player.is_connected:
+            return await ctx.send("The player is not connected.")
 
         try:
             await ctx.send(f"Disconnecting from {ctx.author.voice.channel}.")
@@ -232,7 +231,11 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not player.is_connected:
+            return await ctx.send("The player is not connected.")
+
+        if not player.is_playing:
+            return await ctx.send("The player is not playing anything.")
 
         await player.generate_embed(player.current)
 
@@ -243,7 +246,11 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not self.is_connected:
+            return await ctx.send("The player is not connected.")
+
+        if not self.is_playing:
+            return await ctx.send("The player is not playing anything.")
 
         queue = list(player.queue._queue)
 
@@ -275,7 +282,8 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not player.is_connected:
+            return await ctx.send("The player is not connected.")
 
         if arg.lower() == "off":
             if not player.is_looping:
@@ -297,7 +305,11 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not player.is_connected:
+            return await ctx.send("The player is not connected.")
+
+        if not player.is_playing:
+            return await ctx.send("The player is not playing anything.")
 
         if not isinstance(volume, int):
             return await ctx.send("Volume must be a number.")
@@ -312,7 +324,11 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        await player.state_check(ctx)
+        if not player.is_connected:
+            return await ctx.send("The player is not connected.")
+
+        if not player.is_playing:
+            return await ctx.send("The player is not playing anything.")
 
         if arg.lower() == "off":
             if not player.paused:

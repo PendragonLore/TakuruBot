@@ -18,7 +18,8 @@ logger.addHandler(handler)
 
 class TakuruBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or(*config.PREFIXES), **config.bot)
+        super().__init__(command_prefix=commands.when_mentioned_or(*config.PREFIXES),
+                         **config.bot)
 
         self.wavelink = wavelink.Client(self)
 
@@ -34,9 +35,9 @@ class TakuruBot(commands.Bot):
             "cogs.reevoice",
             "cogs.markov",
             "cogs.moderator",
+            "cogs.help",
             "jishaku",
             "cogs.utils.errorhandler",
-            "cogs.utils.helper",
         ]
 
         self.possible_responses = ["meh.", "I don't feel like answering right now."]
@@ -47,8 +48,6 @@ class TakuruBot(commands.Bot):
         self.ezr = None
 
         self.logger = logger
-
-        self.remove_command("help")
 
         self.loop.create_task(self.load_init_cogs())
         self.loop.create_task(self.botvar_setup())
@@ -132,7 +131,7 @@ class TakuruBot(commands.Bot):
 bot = TakuruBot()
 
 try:
-    bot.loop.run_until_complete(bot.start(config.TOKEN))
+    bot.loop.run_until_complete(bot.start(config.KURUSU_TOKEN))
 except KeyboardInterrupt:
     bot.loop.run_until_complete(bot.shutdown())
 

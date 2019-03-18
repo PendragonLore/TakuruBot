@@ -198,10 +198,10 @@ class Memes(commands.Cog):
         sql = """DELETE
                     FROM memes 
                     WHERE ServerID=$1 
-                    AND name=$2 ;
+                    AND name=$2;
                 """
 
-        await self.bot.db.execute(sql, ctx.guild.id, name, ctx.author.id)
+        await self.bot.db.execute(sql, ctx.guild.id, name)
 
         await ctx.send(f"Succesfully deleted meme {name}.")
 
@@ -220,6 +220,9 @@ class Memes(commands.Cog):
 
         for index, r in enumerate(results):
             memes.append(f"{index + 1}. {r}")
+        
+        if len(memes) == 0:
+            return await ctx.send("Search returned nothing.")
 
         await self.generate_embeds(ctx, memes)
 

@@ -5,6 +5,8 @@ from discord.ext import commands
 
 
 class Reddit(commands.Cog):
+    """Completely WIP."""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -20,7 +22,7 @@ class Reddit(commands.Cog):
 
         await ctx.trigger_typing()
 
-        request = await self.bot.ezr.request(Route("GET", "www.reddit.com/search.json", q=query, limit=5), json=True)
+        request = await self.bot.ezr.request(Route("GET", "www.reddit.com/search.json", q=query, limit=5))
 
         data = await self.extract_data(request)
         embeds = []
@@ -57,12 +59,12 @@ class Reddit(commands.Cog):
 
             if image_link:
                 embed.set_image(url=d["post_link"])
-            elif not d["post_link"] == d["url"]:
+            elif not d["post_link"] == d["url"] and not d["provider_url"] == "https://www.youtube.com/":
                 embed.add_field(name="Post link", value=d["post_link"])
 
             if d["media"] and d["provider_url"] == "https://www.youtube.com/":
                 embed.add_field(name="Youtube video", value=d["media"]["title"], inline=False)
-                embed.add_field(name="URL Link", value=d["post_link"])
+                embed.add_field(name="URL Link", value=f"[Click here]({d['post_link']})")
                 embed.add_field(name="Uploader", value=d["media"]["author_name"])
                 embed.set_image(url=d["media"]["thumbnail_url"])
 
