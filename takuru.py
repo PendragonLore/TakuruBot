@@ -125,7 +125,6 @@ class TakuruBot(commands.Bot):
     async def shutdown(self):
         await self.session.close()
         await self.logout()
-        await self.close()
 
 
 bot = TakuruBot()

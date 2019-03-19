@@ -20,6 +20,8 @@ class Markov(commands.Cog):
     async def on_message(self, message):
         if message.author.bot:
             return
+        if message.content == self.bot.user.mention:
+            return await message.channel.send("<:popular:550253474370027521>? Got something to say? If not then please don't ping me, Discor-- *insert here Takuru style lecture about Discord pings.*")
 
         await self.markovlogging(message)
 

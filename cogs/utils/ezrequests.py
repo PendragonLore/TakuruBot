@@ -54,8 +54,9 @@ class Client:
         url = route.url
 
         json = kwargs.pop("json", True)
+        headers = kwargs.pop("headers", None)
 
-        async with self._session.request(method, url) as r:
+        async with self._session.request(method, url, headers=headers) as r:
             data = await r.json() if json else await r.text(encoding="utf-8")
 
             if 300 > r.status >= 200:

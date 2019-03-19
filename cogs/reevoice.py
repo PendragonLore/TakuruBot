@@ -56,7 +56,7 @@ class Player(wavelink.Player):
 
         await self.bot.wait_until_ready()
 
-        player = self.bot.wavelink.get_player(self.guild_id, cls=Player)
+        player = self.bot.wavelink.get_player(self.guild_id, cls=self)
 
         while True:
             if self.now_playing and not self.is_looping:
@@ -70,6 +70,9 @@ class Player(wavelink.Player):
                     song = await self.queue.get()
             else:
                 song = await self.queue.get()
+            
+            if song is None:
+                continue
 
             await player.play(song)
 
@@ -255,10 +258,10 @@ class ReeMusic(commands.Cog, name="Music"):
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
-        if not self.is_connected:
+        if not player.is_connected:
             return await ctx.send("The player is not connected.")
 
-        if not self.is_playing:
+        if not player.is_playing:
             return await ctx.send("The player is not playing anything.")
 
         queue = list(player.queue._queue)
