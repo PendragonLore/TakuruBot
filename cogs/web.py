@@ -89,6 +89,7 @@ class Web(commands.Cog):
         for index, d in enumerate(data):
             embed = discord.Embed(title=d["word"], url=d["permalink"], color=discord.Colour.from_rgb(54, 57, 62))
 
+            embed.add_field(name="Written by " + d["author"], value="\u200b")
             embed.add_field(name="Definition",
                             value=d["definition"][:1020] + "..." if len(d["definition"]) > 1024 else d["definition"],
                             inline=False)
@@ -98,9 +99,6 @@ class Web(commands.Cog):
             embed.add_field(name="Likes", value=d["thumbs_up"])
             embed.add_field(name="Dislikes", value=d["thumbs_down"])
             embed.add_field(name="ID", value=d["defid"])
-
-            embed.set_author(name="Written by " + d["author"], icon_url=self.bot.user.avatar_url)
-            embed.set_footer(text=f"Page {index + 1} of {len(data)}", icon_url=ctx.author.avatar_url)
 
             embeds.append(embed)
 

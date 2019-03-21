@@ -7,7 +7,7 @@ from typing import Union
 from datetime import timedelta
 from discord.ext import commands
 
-RURL = re.compile("https?://(?:www\.)?.+")
+RURL = re.compile("https?:\/\/(?:www\.)?.+")
 
 
 class NotDJ(commands.CheckFailure):
@@ -49,7 +49,15 @@ class Player(wavelink.Player):
         self.now_playing = None
         self.is_looping = False
 
+        self.eq = "Flat"
+
         self.bot.loop.create_task(self.player_loop())
+    
+    def strfdelta(self, tdelta: timedelta, fmt: str):
+        d = {"days": tdelta.days}
+        d["hours"], rem = divmod(tdelta.seconds, 3600)
+        d["minutes"], d["seconds"] = divmod(rem, 60)
+        return fmt.format(**d)
 
     async def player_loop(self):
         """The main player loop, this loop manages queueing and playing songs."""
@@ -59,10 +67,8 @@ class Player(wavelink.Player):
         player = self.bot.wavelink.get_player(self.guild_id, cls=self)
 
         while True:
-            if self.now_playing and not self.is_looping:
-                await self.now_playing.delete()
-
             self.next.clear()
+            print("Removed song")
 
             if self.is_looping:
                 song = player.current
@@ -70,14 +76,16 @@ class Player(wavelink.Player):
                     song = await self.queue.get()
             else:
                 song = await self.queue.get()
-            
+
+            print(f"Got song {song}")
             if song is None:
                 continue
 
             await player.play(song)
+            print("Playing song")
+            await self.generate_embed(song)
 
-            self.now_playing = await self.generate_embed(song)
-
+            print("Waiting...")
             await self.next.wait()
 
     async def generate_embed(self, track: wavelink.Track):
@@ -92,9 +100,13 @@ class Player(wavelink.Player):
         embed.set_author(name=f"Uploader: {track.info['author']}", icon_url=self.bot.user.avatar_url)
         embed.set_footer(text="\"Hope you like this.\"", icon_url=self.dj.avatar_url)
         if track.is_stream:
-            embed.add_field(name="Lenght", value="STREAM ð´")
+            embed.add_field(name="Lenght", value="STREAM")
         else:
-            embed.add_field(name="Lenght", value=str(timedelta(milliseconds=track.length)))
+            max_pos = self.strfdelta(timedelta(milliseconds=track.length), "{hours}:{minutes}:{seconds}")
+            pos = self.strfdelta(timedelta(milliseconds=self.position), "{hours}:{minutes}:{seconds}")
+            
+            embed.add_field(name="Lenght", value=f"{pos}/{max_pos}")
+        embed.add_field(name="Current Equalizer", value=self.eq)
         embed.add_field(name="Requested by", value=track.requester.mention)
         embed.add_field(name="Current DJ", value=self.dj.mention)
 
@@ -125,7 +137,7 @@ class ReeMusic(commands.Cog, name="Music"):
     def __init__(self, bot):
         self.bot = bot
         self.bot.loop.create_task(self.node())
-
+        
     # Currently useless but I'll leave it here
     async def cog_command_error(self, ctx, error):
         if isinstance(error, NotDJ):
@@ -140,8 +152,8 @@ class ReeMusic(commands.Cog, name="Music"):
     async def node(self):
         await self.bot.wait_until_ready()
 
-        node = await self.bot.wavelink.initiate_node(**config.wavelink)
-        node.set_hook(self.event_hook)
+        wave_node = await self.bot.wavelink.initiate_node(**config.wavelink)
+        wave_node.set_hook(self.event_hook)
 
     async def event_hook(self, event):
         if isinstance(event, wavelink.TrackEnd):
@@ -283,8 +295,8 @@ class ReeMusic(commands.Cog, name="Music"):
         except discord.HTTPException:
             await ctx.send(
                 f"Queue is too long to show, displaying only basic information:\n\n"
-                f"**Total tracks: {len(queue)}\n"
-                f"**Total lenght: {timedelta(milliseconds=total_lenght)}\n"
+                f"**Total tracks: {len(queue)}**\n"
+                f"**Total lenght: {timedelta(milliseconds=total_lenght)}**\n"
                 f"**Next track: {queue[0]} added by {queue[0].requester}**")
 
     @commands.command(name="loop")
@@ -357,6 +369,21 @@ class ReeMusic(commands.Cog, name="Music"):
 
         await player.set_pause(pause=True)
         return await ctx.send("Player is now paused.")
+    
+    @commands.command(name="seteq")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def set_equalizer(self, ctx, equalizer="Flat"):
+        """Set the Player's equalizer.
+        Valid arguments are: ``Flat (Default), Piano, Metal, Boost``"""
+
+        if equalizer.capitalize() not in ("Flat", "Piano", "Metal", "Boost"):
+            return await ctx.send("Not a valid equalizer.")
+
+        player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
+
+        await player.set_preq(equalizer)
+        player.eq = equalizer.capitalize()
+        await ctx.send(f"Set Player's equalizer to {equalizer}.")
 
 
 def setup(bot):

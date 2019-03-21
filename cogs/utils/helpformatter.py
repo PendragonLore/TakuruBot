@@ -15,12 +15,8 @@ class TakuruHelpCommand(commands.HelpCommand):
         return f"No command named {string} found."
 
     def subcommand_not_found(self, command, string):
-        return f"No subcommand name {string} found."
+        return f"No subcommand named {string} found."
 
-    def set_pages_number(self, embeds):
-        for n, a in enumerate(embeds):
-            a.set_footer(text=f"Page {n + 1} of {len(embeds)}")
-    
     def get_group_commands(self, group, e):
         for sub in group.commands:
             e.add_field(name=self.get_command_signature(sub), value=sub.help, inline=False)
@@ -43,7 +39,7 @@ class TakuruHelpCommand(commands.HelpCommand):
 
     def create_help_embed(self):
         embed = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
-        embed.set_author(name=str(self.context.bot.user), icon_url=self.context.author.avatar_url)
+        embed.set_footer(text=f"PREFIX: {self.clean_prefix}", icon_url=self.context.author.avatar_url)
 
         return embed
 
@@ -57,8 +53,8 @@ class TakuruHelpCommand(commands.HelpCommand):
         await d.send(embed=e)
 
     async def send_group_help(self, group):
-        cmd_filter = await self.filter_commands(group.commands, sort=True)
         embeds = []
+        cmd_filter = await self.filter_commands(group.commands, sort=True)
 
         if cmd_filter:
             for cmd in self.chunks(cmd_filter, 6):
@@ -69,19 +65,14 @@ class TakuruHelpCommand(commands.HelpCommand):
                 for c in cmd:
                     e.add_field(name=self.get_command_signature(c),
                                 value=c.help, inline=False)
-                    if isinstance(c, commands.Group):
-                        self.get_group_commands(c, e)
-                        
-                embeds.append(e)
 
-            self.set_pages_number(embeds)
+                embeds.append(e)
 
         await Paginator(self.context, embeds).paginate()
 
     async def send_cog_help(self, cog):
-
-        cmd_filter = await self.filter_commands(cog.get_commands())
         embeds = []
+        cmd_filter = await self.filter_commands(cog.get_commands(), sort=True)
 
         if cmd_filter:
             for i in self.chunks(cmd_filter, 6):
@@ -98,21 +89,17 @@ class TakuruHelpCommand(commands.HelpCommand):
 
                 embeds.append(e)
 
-            self.set_pages_number(embeds)
-
         await Paginator(self.context, embeds).paginate()
 
     async def send_bot_help(self, mapping):
         embeds = []
-
         for cog, cog_cmds in mapping.items():
             cmd_filter = await self.filter_commands(cog_cmds, sort=True)
 
             if cmd_filter:
                 for n, x in enumerate(self.chunks(cmd_filter, 8)):
                     e = self.create_help_embed()
-                    e.title = f"{cog.qualified_name} Commands ({len(cmd_filter)})"
-                    e.description = cog.description
+                    e.add_field(name=cog.qualified_name, value=cog.description)
 
                     for y in x:
                         e.add_field(name=self.get_command_signature(y), value=y.help, inline=False)
@@ -121,7 +108,5 @@ class TakuruHelpCommand(commands.HelpCommand):
                             self.get_group_commands(y, e)
 
                     embeds.append(e)
-
-                self.set_pages_number(embeds)
 
         await Paginator(self.context, embeds).paginate()

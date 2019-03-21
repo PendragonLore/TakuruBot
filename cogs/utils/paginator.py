@@ -7,20 +7,20 @@ import discord
 
 class Paginator:
     def __init__(self, ctx, entries: list, embed=True):
-        self.bot = ctx.bot
         self.ctx = ctx
+        self.bot = ctx.bot
+        self.user_ = ctx.author
+        self.channel = ctx.channel
+        self.msg = ctx.message
+
         self.entries = entries
         self.embed = embed
         self.max_pages = len(entries) - 1
-        self.msg = ctx.message
         self.paginating = True
-        self.user_ = ctx.author
-        self.channel = ctx.channel
         self.current = 0
         self.reactions = [
             ("\N{BLACK LEFT-POINTING TRIANGLE}", self.backward),
             ("\N{BLACK RIGHT-POINTING TRIANGLE}", self.forward),
-            ("\N{INPUT SYMBOL FOR NUMBERS}", self.selector),
             ("\N{BLACK SQUARE FOR STOP}", self.stop),
             ("\N{INFORMATION SOURCE}", self.info)]
 
@@ -31,6 +31,8 @@ class Paginator:
             except AttributeError:
                 await self.channel.send(self.entries)
         else:
+            for n, a in enumerate(self.entries):
+                a.set_author(name=f"Page {n + 1} of {len(self.entries)}")
             try:
                 self.msg = await self.channel.send(embed=self.entries[0])
             except (AttributeError, TypeError):
@@ -48,11 +50,8 @@ class Paginator:
         except (AttributeError, TypeError):
             await self.msg.edit(content=self.entries[page])
 
-    async def first_page(self):
-        self.current = 0
-        await self.alter(self.current)
-
     async def backward(self):
+        """takes you to the previous page or the last if used on the first one."""
         if self.current == 0:
             self.current = self.max_pages
             await self.alter(self.current)
@@ -61,6 +60,7 @@ class Paginator:
             await self.alter(self.current)
 
     async def forward(self):
+        """takes you to the next page or the first if used on the last one."""
         if self.current == self.max_pages:
             self.current = 0
             await self.alter(self.current)
@@ -68,31 +68,8 @@ class Paginator:
             self.current += 1
             await self.alter(self.current)
 
-    async def last_page(self):
-        self.current = self.max_pages
-        await self.alter(self.current)
-
-    async def selector(self):
-        def check(m):
-            if m.author == self.user_:
-                return True
-            if m.message == self.msg:
-                return True
-            if int(m.content) > 1 <= self.max_pages + 1:
-                return True
-            return False
-
-        delete = await self.channel.send(f"Which page do you want to turn to? **1-{self.max_pages + 1}?**")
-        try:
-            number = int((await self.bot.wait_for("message", check=check, timeout=60)).content)
-        except asyncio.TimeoutError:
-            return await self.ctx.send("You ran out of time.")
-        else:
-            self.current = number - 1
-            await self.alter(self.current)
-            await delete.delete()
-
     async def stop(self):
+        """stops the paginator session."""
         try:
             await self.msg.clear_reactions()
         except discord.Forbidden:
@@ -101,6 +78,7 @@ class Paginator:
         self.paginating = False
 
     async def info(self):
+        """shows this page."""
         embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
 
         embed.set_author(name="Instructions")
@@ -108,15 +86,8 @@ class Paginator:
         embed.description = "This is a reaction paginator; when you react to one of the buttons below " \
                             "the message gets edited. Below you will find what the reactions do."
 
-        embed.add_field(name="Previous Page ◀", value="This reaction takes you to the previous page. "
-                                                      "If you use this reaction while in the first page it will take"
-                                                      " you to the last page.", inline=False)
-        embed.add_field(name="Next Page ▶", value="This reaction takes you to the next page. "
-                                                  "If you use this reaction while in the last page it will take "
-                                                  "you to the first page.", inline=False)
-        embed.add_field(name="Selector 🔢", value="This reaction allows you to choose what page to go to.",
-                        inline=False)
-        embed.add_field(name="Information ℹ", value="This reaction takes you to this page.")
+        for emoji, func in self.reactions:
+            embed.add_field(name=emoji, value=f"This reaction {func.__doc__}", inline=False)
 
         await self.msg.edit(embed=embed)
 
@@ -136,6 +107,7 @@ class Paginator:
     async def paginate(self):
         perms = self.ctx.me.guild_permissions.manage_messages
         await self.setup()
+
         while self.paginating:
             if perms:
                 try:
@@ -157,7 +129,7 @@ class Paginator:
                 try:
                     done.pop().result()
                 except asyncio.TimeoutError:
-                    return self.stop
+                    return await self.stop()
 
                 for future in pending:
                     future.cancel()

@@ -9,6 +9,7 @@ class Reddit(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.logo_url = "http://www.stickpng.com/assets/images/5847e9efcef1014c0b5e482e.png"
 
     @commands.group(name="reddit", aliases=["r"], invoke_without_command=True, case_insensitive=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -43,14 +44,14 @@ class Reddit(commands.Cog):
             if d["thumbnail"] not in ("self", "default") and not d["media"] and not image_link:
                 embed.set_thumbnail(url=d["thumbnail"])
 
-            embed.set_author(name=f"u/{d['author']} in {d['subreddit']}", icon_url=self.bot.user.avatar_url)
+            embed.add_field(name=d["subreddit"], value=f"u/{d['author']}")
 
             if d["flair"]:
-                embed.set_footer(text=d["flair"] + f" | Page {index + 1} of {len(data)}.",
-                                 icon_url="http://www.stickpng.com/assets/images/5847e9efcef1014c0b5e482e.png")
+                embed.set_footer(text=d["flair"],
+                                 icon_url=self.logo_url)
             else:
-                embed.set_footer(icon_url="http://www.stickpng.com/assets/images/5847e9efcef1014c0b5e482e.png",
-                                 text=f"No flair | Page {index + 1} of {len(data)}.")
+                embed.set_footer(icon_url=self.logo_url,
+                                 text=f"No flair")
 
             if d["text_content"]:
                 embed.add_field(name="Text", value=d["text_content"])
