@@ -84,7 +84,7 @@ class Web(commands.Cog):
         data = (await self.bot.ezr.request(Route("GET", "api.urbandictionary.com/v0/define", term=word)))["list"]
         embeds = []
 
-        for index, d in enumerate(data):
+        for d in data:
             embed = discord.Embed(title=d["word"], url=d["permalink"], color=discord.Colour.from_rgb(54, 57, 62))
 
             embed.add_field(name="Written by " + d["author"], value="\u200b")

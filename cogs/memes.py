@@ -19,6 +19,8 @@ class Memes(commands.Cog):
 
         for x in self.chunks(meme_list, 20):
             meme_embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
+            meme_embed.set_footer(text=f"Total Memes: {len(meme_list)}")
+
             fin_memes = []
 
             for y in x:
@@ -26,10 +28,6 @@ class Memes(commands.Cog):
 
             meme_embed.description = f"\n".join(fin_memes)
             embeds.append(meme_embed)
-
-            for index, e in enumerate(embeds):
-                e.set_footer(
-                    text=f"Total Memes: {len(meme_list)}")
 
         await ctx.paginate(embeds)
 

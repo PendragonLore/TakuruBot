@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from .paginator import Paginator
 
 
 class TakuruHelpCommand(commands.HelpCommand):
@@ -68,7 +67,7 @@ class TakuruHelpCommand(commands.HelpCommand):
 
                 embeds.append(e)
 
-        await Paginator(self.context, embeds).paginate()
+        await self.context.paginate(embeds)
 
     async def send_cog_help(self, cog):
 
@@ -90,7 +89,7 @@ class TakuruHelpCommand(commands.HelpCommand):
 
                 embeds.append(e)
 
-        await Paginator(self.context, embeds).paginate()
+        await self.context.paginate(embeds)
 
     async def send_bot_help(self, mapping):
         embeds = []
@@ -99,7 +98,7 @@ class TakuruHelpCommand(commands.HelpCommand):
             cmd_filter = await self.filter_commands(cog_cmds, sort=True)
 
             if cmd_filter:
-                for n, x in enumerate(self.chunks(cmd_filter, 8)):
+                for x in self.chunks(cmd_filter, 8):
                     e = self.create_help_embed()
                     e.add_field(name=cog.qualified_name, value=cog.description)
 
@@ -111,4 +110,4 @@ class TakuruHelpCommand(commands.HelpCommand):
 
                     embeds.append(e)
 
-        await Paginator(self.context, embeds).paginate()
+        await self.context.paginate(embeds)
