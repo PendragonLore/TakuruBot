@@ -7,7 +7,7 @@ from discord.ext import commands
 
 class FunStuff(commands.Cog, name="Fun"):
     """Fun stuff, I think."""
-    
+
     def __init__(self, bot):
         self.bot = bot
 
