@@ -1,5 +1,4 @@
 from .utils.ezrequests import Route
-from .utils.paginator import Paginator
 import discord
 from discord.ext import commands
 
@@ -72,7 +71,7 @@ class Reddit(commands.Cog):
 
             embeds.append(embed)
 
-        await Paginator(ctx, embeds).paginate()
+        await ctx.paginate(embeds)
 
     async def extract_data(self, request):
         d = []

@@ -1,7 +1,6 @@
 import random
 import re
 import aiofiles # Using aiofiles because I'm way too lazy to rewrite this for DB integration.
-import config
 from discord.ext import commands
 
 
@@ -14,7 +13,7 @@ class Markov(commands.Cog):
         self.punctuation = ["!", ".", "?", "-"]
 
     async def cog_check(self, ctx):
-        return ctx.guild.id in config.markov_guilds
+        return ctx.guild.id in self.bot.config.markov_guilds
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -45,7 +44,7 @@ class Markov(commands.Cog):
                 else:
                     dot = "."
 
-                for key, value in config.ignored_mentions.items():
+                for key, value in self.bot.config.ignored_mentions.items():
                     _message = _message.replace(key, value)
 
                 await markovdb.write(f"{_message}{dot}\n")
@@ -78,9 +77,6 @@ class Markov(commands.Cog):
                     dot = ""
                 else:
                     dot = "."
-
-                for key, value in config.ignored_mentions.items():
-                    message.replace(key, value)
 
                 markovdb.write(f"{message}{dot}\n")
 

@@ -1,14 +1,5 @@
 import discord
-import config
-from .utils.paginator import Paginator
 from discord.ext import commands
-
-
-def is_inside_joke_suitable():
-    async def predicate(ctx):
-        return ctx.guild.id in config.markov_guilds
-
-    return commands.check(predicate)
 
 
 # TODO fix sql queries
@@ -38,9 +29,9 @@ class Memes(commands.Cog):
 
             for index, e in enumerate(embeds):
                 e.set_footer(
-                    text=f"Page {index + 1} of {len(embeds)} | Total Memes: {len(meme_list)}")
+                    text=f"Total Memes: {len(meme_list)}")
 
-        await Paginator(ctx, embeds).paginate()
+        await ctx.paginate(embeds)
 
     async def round_search(self, ctx, name):
         search = """SELECT name

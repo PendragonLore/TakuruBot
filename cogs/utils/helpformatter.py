@@ -15,7 +15,7 @@ class TakuruHelpCommand(commands.HelpCommand):
         return f"No command named {string} found."
 
     def subcommand_not_found(self, command, string):
-        return f"No subcommand named {string} found."
+        return f"No subcommand name {string} found."
 
     def get_group_commands(self, group, e):
         for sub in group.commands:
@@ -53,8 +53,8 @@ class TakuruHelpCommand(commands.HelpCommand):
         await d.send(embed=e)
 
     async def send_group_help(self, group):
-        embeds = []
         cmd_filter = await self.filter_commands(group.commands, sort=True)
+        embeds = []
 
         if cmd_filter:
             for cmd in self.chunks(cmd_filter, 6):
@@ -71,8 +71,9 @@ class TakuruHelpCommand(commands.HelpCommand):
         await Paginator(self.context, embeds).paginate()
 
     async def send_cog_help(self, cog):
-        embeds = []
+
         cmd_filter = await self.filter_commands(cog.get_commands(), sort=True)
+        embeds = []
 
         if cmd_filter:
             for i in self.chunks(cmd_filter, 6):
@@ -93,6 +94,7 @@ class TakuruHelpCommand(commands.HelpCommand):
 
     async def send_bot_help(self, mapping):
         embeds = []
+
         for cog, cog_cmds in mapping.items():
             cmd_filter = await self.filter_commands(cog_cmds, sort=True)
 

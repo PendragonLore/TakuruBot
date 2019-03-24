@@ -134,14 +134,6 @@ class General(commands.Cog):
 
             await ctx.send(embed=embed)
 
-    # TODO add more responses
-    @commands.command(name="8ball")
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def eight_ball(self, ctx):
-        """\"I guess I'll have to answer your dumb questions.\""""
-
-        await ctx.send(f"**{ctx.message.author.name}** | {random.choice(self.bot.possible_responses)}")
-
     @commands.command(name="ping")
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def ping(self, ctx):

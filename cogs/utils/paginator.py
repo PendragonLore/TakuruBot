@@ -1,5 +1,4 @@
 # PAGINATOR IS FROM https://gist.github.com/OneEyedKnight/0f188251247c58345a1a97e94d05dd15
-# TODO make your own paginator idiot.
 
 import asyncio
 import discord
@@ -73,7 +72,7 @@ class Paginator:
         try:
             await self.msg.clear_reactions()
         except discord.Forbidden:
-            await self.msg.delete()
+            pass
 
         self.paginating = False
 

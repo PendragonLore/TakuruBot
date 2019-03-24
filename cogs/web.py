@@ -1,10 +1,8 @@
 import youtube_dl
-import config
 import discord
 import async_cse
 from .utils.ezrequests import Route
 from .utils.cache import cache
-from .utils.paginator import Paginator
 from discord.ext import commands
 from functools import partial
 
@@ -33,7 +31,7 @@ class Web(commands.Cog):
 
             embeds.append(embed)
 
-        await Paginator(ctx, embeds).paginate()
+        await ctx.paginate(embeds)
 
     @commands.command(name="giphy")
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -44,7 +42,7 @@ class Web(commands.Cog):
         to_send = []
 
         data = (await self.bot.ezr.request(
-            Route("GET", "api.giphy.com/v1/gifs/search", q=gif, api_key=config.GIPHY_KEY, limit=5), json=True))["data"]
+            Route("GET", "api.giphy.com/v1/gifs/search", q=gif, api_key=self.bot.config.GIPHY_KEY, limit=5), json=True))["data"]
 
         for entry in data:
             url = entry["images"]["original"]["url"]
@@ -64,7 +62,7 @@ class Web(commands.Cog):
 
         to_send = []
 
-        anon_id = (await self.bot.ezr.request(Route("GET", "api.tenor.com/v1/anonid", key=config.TENOR_KEY)))["anon_id"]
+        anon_id = (await self.bot.ezr.request(Route("GET", "api.tenor.com/v1/anonid", key=self.bot.config.TENOR_KEY)))["anon_id"]
 
         data = (await self.bot.ezr.request(Route("GET", "api.tenor.com/v1/search", q=gif, anon_id=anon_id, limit=5)))[
             "results"]
@@ -102,7 +100,7 @@ class Web(commands.Cog):
 
             embeds.append(embed)
 
-        await Paginator(ctx, embeds).paginate()
+        await ctx.paginate(embeds)
 
     @commands.command(name="yt")
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
@@ -162,7 +160,7 @@ class Web(commands.Cog):
     async def get_search(self, ctx, query, is_image=False):
         await ctx.trigger_typing()
 
-        keys = config.google_custom_search_api_keys
+        keys = self.bot.config.google_custom_search_api_keys
 
         for index, key in enumerate(keys):
             try:

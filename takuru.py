@@ -3,17 +3,21 @@ import aiohttp
 import asyncpg
 import wavelink
 import config
-import asyncio
 import logging
 import cogs.utils.ezrequests as ezrequests
-from cogs.utils.cache import clear_cache
+from cogs.utils.paginator import Paginator
 from discord.ext import commands
 
 logger = logging.getLogger("takuru")
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler(filename="takuru.log", encoding="utf-8", mode="w")
-handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+handler.setFormatter(logging.Formatter("[%(asctime)s:%(levelname)s:%(name)s] %(message)s"))
 logger.addHandler(handler)
+
+
+class RightSiderContext(commands.Context):
+    async def paginate(self, entries: list, is_embed: bool = True):
+        await Paginator(self, entries, is_embed).paginate()
 
 
 class TakuruBot(commands.Bot):
@@ -22,6 +26,7 @@ class TakuruBot(commands.Bot):
                          **config.bot)
 
         self.wavelink = wavelink.Client(self)
+        self.config = config
 
         self.http_headers = {
             "User-Agent": "Python:TakuruBot:0.1 (by /u/Pendragon_Lore)"
@@ -31,6 +36,7 @@ class TakuruBot(commands.Bot):
             "cogs.general",
             "cogs.memes",
             "cogs.web",
+            "cogs.fun",
             "cogs.reddit",
             "cogs.reevoice",
             "cogs.markov",
@@ -51,25 +57,6 @@ class TakuruBot(commands.Bot):
 
         self.loop.create_task(self.load_init_cogs())
         self.loop.create_task(self.botvar_setup())
-        self.loop.create_task(self.clear_lru_cache())
-
-    async def load_init_cogs(self):
-        # This function is a coroutine and this is here because fuck aiohttp
-        self.session = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
-        self.ezr = ezrequests.Client(self)
-
-        print("\n\n### COG LOADING ###\n\n")
-        self.logger.info("Loading cogs...")
-        for cog in self.init_cogs:
-            ext = cog.replace("cogs.", "")
-            try:
-                self.load_extension(cog)
-                print(f"Succesfully loaded cog {ext}")
-                self.logger.info(f"Succesfully loaded {ext}")
-            except Exception as e:
-                print(f"Failed to load {ext}.")
-                traceback.print_exc()
-                self.logger.critical(f"Failed to load {ext} [{type(e).__name__}{e}]")
 
     async def on_ready(self):
         print(f"\nLogged in as {self.user.name}")
@@ -93,8 +80,28 @@ class TakuruBot(commands.Bot):
     async def on_guild_remove(self, guild):
         self.logger.info(f"I just joined {guild.name} (ID: {guild.id} Owner: {guild.owner})")
 
-    async def botvar_setup(self):
+    async def get_context(self, message, *, cls=None):
+        return await super().get_context(message, cls=RightSiderContext)
 
+    async def load_init_cogs(self):
+        # This function is a coroutine and this is here because fuck aiohttp
+        self.session = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
+        self.ezr = ezrequests.Client(self)
+
+        print("\n\n### COG LOADING ###\n\n")
+        self.logger.info("Loading cogs...")
+        for cog in self.init_cogs:
+            ext = cog.replace("cogs.", "")
+            try:
+                self.load_extension(cog)
+                print(f"Succesfully loaded cog {ext}")
+                self.logger.info(f"Succesfully loaded {ext}")
+            except Exception as e:
+                print(f"Failed to load {ext}.")
+                traceback.print_exc()
+                self.logger.critical(f"Failed to load {ext} [{type(e).__name__}{e}]")
+
+    async def botvar_setup(self):
         print(f"\n\n### POSTGRES CONNECTION ###\n\n")
         self.logger.info("Connecting to postgres...")
 
@@ -112,16 +119,6 @@ class TakuruBot(commands.Bot):
             self.logger.info("Connection succesful.")
             print("Connection succesful")
 
-    async def clear_lru_cache(self):
-        await self.wait_until_ready()
-
-        # Still haven't decided if this is actually useful
-        # or not, in the meantime I guess I'll leave it here.
-        while not self.is_closed():
-            await asyncio.sleep(604800, loop=self.loop)
-            self.logger.info("Cleared the cache.")
-            clear_cache()
-
     async def shutdown(self):
         await self.session.close()
         await self.logout()
@@ -130,7 +127,7 @@ class TakuruBot(commands.Bot):
 bot = TakuruBot()
 
 try:
-    bot.loop.run_until_complete(bot.start(config.TAKURU_TOKEN))
+    bot.loop.run_until_complete(bot.start(bot.config.TAKURU_TOKEN))
 except KeyboardInterrupt:
     bot.loop.run_until_complete(bot.shutdown())
 
