@@ -50,7 +50,7 @@ class CommandHandler(commands.Cog):
             
         else:
             traceback.print_exception(type(error), error, error.__traceback__)
-            
+
             stack = 5  # how many levels deep to trace back
             traceback_text = "\n".join(traceback.format_exception(type(error), error, error.__traceback__, stack))
             owner = self.bot.get_user(self.bot.owner_id)
