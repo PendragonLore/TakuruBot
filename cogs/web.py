@@ -1,7 +1,6 @@
 import youtube_dl
 import discord
 import async_cse
-from .utils.ezrequests import Route
 from .utils.cache import cache
 from discord.ext import commands
 from functools import partial
@@ -41,14 +40,13 @@ class Web(commands.Cog):
         await ctx.trigger_typing()
         to_send = []
 
-        data = (await self.bot.ezr.request(
-            Route("GET", "api.giphy.com/v1/gifs/search", q=gif, api_key=self.bot.config.GIPHY_KEY, limit=5), json=True))["data"]
+        data = (await self.bot.ezr.request("GET", "api.giphy.com/v1/gifs/search", q=gif, api_key=self.bot.config.GIPHY_KEY, limit=5))["data"]
 
         for entry in data:
             url = entry["images"]["original"]["url"]
             to_send.append(url)
 
-        if len(to_send) == 0:
+        if not to_send:
             return await ctx.send("Search returned nothing.")
 
         await self.generate_gif_embed(ctx, to_send, gif)
@@ -62,10 +60,9 @@ class Web(commands.Cog):
 
         to_send = []
 
-        anon_id = (await self.bot.ezr.request(Route("GET", "api.tenor.com/v1/anonid", key=self.bot.config.TENOR_KEY)))["anon_id"]
+        anon_id = (await self.bot.ezr.request("GET", "api.tenor.com/v1/anonid", key=self.bot.config.TENOR_KEY))["anon_id"]
 
-        data = (await self.bot.ezr.request(Route("GET", "api.tenor.com/v1/search", q=gif, anon_id=anon_id, limit=5)))[
-            "results"]
+        data = (await self.bot.ezr.request("GET", "api.tenor.com/v1/search", q=gif, anon_id=anon_id, limit=5))["results"]
 
         for entry in data:
             url = entry["media"][0]["gif"]["url"]
@@ -81,7 +78,7 @@ class Web(commands.Cog):
     async def urban_dictionary(self, ctx, *, word):
         """Get a word's definition on Urban Dictionary"""
 
-        data = (await self.bot.ezr.request(Route("GET", "api.urbandictionary.com/v0/define", term=word)))["list"]
+        data = (await self.bot.ezr.request("GET", "api.urbandictionary.com/v0/define", term=word))["list"]
         embeds = []
 
         for d in data:
@@ -91,9 +88,10 @@ class Web(commands.Cog):
             embed.add_field(name="Definition",
                             value=d["definition"][:1020] + "..." if len(d["definition"]) > 1024 else d["definition"],
                             inline=False)
-            embed.add_field(name="Example",
-                            value=d["example"][:1020] + "..." if len(d["example"]) > 1024 else d["example"],
-                            inline=False)
+            if d["example"]:
+                embed.add_field(name="Example",
+                                value=d["example"][:1020] + "..." if len(d["example"]) > 1024 else d["example"],
+                                inline=False)
             embed.add_field(name="Likes", value=d["thumbs_up"])
             embed.add_field(name="Dislikes", value=d["thumbs_down"])
             embed.add_field(name="ID", value=d["defid"])

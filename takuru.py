@@ -1,12 +1,16 @@
 import traceback
+import asyncio
 import aiohttp
 import asyncpg
 import wavelink
 import config
 import logging
-import cogs.utils.ezrequests as ezrequests
+from cogs.utils.ezrequests import EasyRequests
+import uvloop
 from cogs.utils.paginator import Paginator
 from discord.ext import commands
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 logger = logging.getLogger("takuru")
 logger.setLevel(logging.INFO)
@@ -86,7 +90,7 @@ class TakuruBot(commands.Bot):
     async def load_init_cogs(self):
         # This function is a coroutine and this is here because fuck aiohttp
         self.session = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
-        self.ezr = ezrequests.Client(self)
+        self.ezr = EasyRequests(self)
 
         print("\n\n### COG LOADING ###\n\n")
         self.logger.info("Loading cogs...")

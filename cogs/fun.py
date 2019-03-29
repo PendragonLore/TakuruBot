@@ -1,6 +1,5 @@
 import discord
 import random
-from .utils.ezrequests import Route
 from typing import Optional
 from discord.ext import commands
 
@@ -18,7 +17,7 @@ class FunStuff(commands.Cog, name="Fun"):
         if amount > 50:
             return await ctx.send("You can only get up to 50 dog pics at a time.")
 
-        dogs = await self.bot.ezr.request(Route("GET", f"dog.ceo/api/breeds/image/random/{amount}"))
+        dogs = await self.bot.ezr.request("GET", f"dog.ceo/api/breeds/image/random/{amount}")
         embeds = []
 
         for dog in dogs["message"]:
@@ -36,8 +35,7 @@ class FunStuff(commands.Cog, name="Fun"):
         if amount > 100:
             return await ctx.send("You can only get up to 100 cat pics at a time.")
 
-        cats = await self.bot.ezr.request(
-            Route("GET", "api.thecatapi.com/v1/images/search", limit=amount, api_key=self.bot.config.CATAPI_KEY))
+        cats = await self.bot.ezr.request("GET", "api.thecatapi.com/v1/images/search", limit=amount, api_key=self.bot.config.CATAPI_KEY)
         embeds = []
 
         for cat in cats:

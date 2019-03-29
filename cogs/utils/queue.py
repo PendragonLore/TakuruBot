@@ -6,7 +6,6 @@ class Queue:
 
     def __init__(self):
         self.entries = list()
-        self.backwards = list()
 
     async def get(self):
         while True:
@@ -33,6 +32,15 @@ class Queue:
 
     def pop_index(self, index: int):
         return self.entries.pop(index)
+    
+    def clear(self):
+        del self.entries[:]
+    
+    def clear_index(self, index: int):
+        del self.entries[index]
+    
+    def clear_range(self, start: int, end: int):
+        del self.entries[start:end]
 
     async def find_next(self):
         while True:

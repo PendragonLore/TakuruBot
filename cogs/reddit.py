@@ -1,4 +1,3 @@
-from .utils.ezrequests import Route
 import discord
 from discord.ext import commands
 
@@ -23,7 +22,7 @@ class Reddit(commands.Cog):
 
         await ctx.trigger_typing()
 
-        request = await self.bot.ezr.request(Route("GET", "www.reddit.com/search.json", q=query, limit=5))
+        request = await self.bot.ezr.request("GET", "www.reddit.com/search.json", q=query, limit=5)
 
         data = await self.extract_data(request)
         embeds = []
