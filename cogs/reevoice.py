@@ -240,7 +240,7 @@ class ReeMusic(commands.Cog, name="Music"):
                 return await ctx.send(f"No song with ID {index}, check the queue.")
 
         await ctx.send(f"Skipped **{player.current.title}**.")
-        await player.stop()
+        player.event.set()
 
     @commands.command(name="disconnect")
     # @Player.state_check()
@@ -339,19 +339,13 @@ class ReeMusic(commands.Cog, name="Music"):
     @commands.command(name="setvolume", aliases=["vol", "volume", "setvol"])
     # @Player.state_check()
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def set_volume(self, ctx, volume):
+    async def set_volume(self, ctx, volume: int):
         """Set the player's volume, earrapes are encouraged :omegalul:."""
 
         player = self.bot.wavelink.get_player(ctx.guild.id, cls=Player)
 
         if not player.is_connected:
             return await ctx.send("The player is not connected.")
-
-        if not player.is_playing:
-            return await ctx.send("The player is not playing anything.")
-
-        if not isinstance(volume, int):
-            return await ctx.send("Volume must be a number.")
 
         await player.set_volume(volume)
         await ctx.send(f"Set player volume to {volume}")
@@ -388,6 +382,9 @@ class ReeMusic(commands.Cog, name="Music"):
     async def set_equalizer(self, ctx, equalizer="Flat"):
         """Set the Player's equalizer.
         Valid arguments are: ``Flat (Default), Piano, Metal, Boost``"""
+                         
+        if not player.is_connected:
+            return await ctx.send("Player is not connected.")
 
         if equalizer.capitalize() not in ("Flat", "Piano", "Metal", "Boost"):
             return await ctx.send("Not a valid equalizer.")
