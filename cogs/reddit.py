@@ -59,7 +59,7 @@ class Reddit(commands.Cog):
 
             if image_link:
                 embed.set_image(url=d["post_link"])
-            elif not d["post_link"] == d["url"] and not d["provider_url"] == "https://www.youtube.com/":
+            elif not d["post_link"] == d["url"] and not d["provider_url"] == "https://www.youtube.com/" and not d["text_content"]:
                 embed.add_field(name="Post link", value=d["post_link"])
 
             if d["media"] and d["provider_url"] == "https://www.youtube.com/":

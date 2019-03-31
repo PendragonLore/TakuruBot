@@ -140,7 +140,8 @@ def perms_check():
 
 
 class ReeMusic(commands.Cog, name="Music"):
-    """Play music in voice chat or whatever."""
+    """Play music in voice chat or whatever.
+    FYI probably won't work because lavalink and wavelink are retarded."""
 
     def __init__(self, bot):
         self.bot = bot
