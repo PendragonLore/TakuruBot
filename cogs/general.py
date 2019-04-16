@@ -183,7 +183,7 @@ class General(commands.Cog):
         Do not abuse this kthx."""
         if not code.startswith("```") or not code.endswith("```"):
             return await ctx.send("The code must be wrapped in code blocks with a valid language identifier.")
-            
+
         block, code = code.split("\n", 1)
         language = block[3:]
 
