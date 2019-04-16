@@ -1,17 +1,21 @@
-# PAGINATOR IS FROM https://gist.github.com/OneEyedKnight/0f188251247c58345a1a97e94d05dd15
-
 import asyncio
+
 import discord
 
 
+class PaginationError(Exception):
+    pass
+
+
 class Paginator:
-    def __init__(self, ctx, entries: list, embed=True):
+    def __init__(self, ctx, entries: list, embed: bool = True):
         self.ctx = ctx
         self.bot = ctx.bot
-        self.user_ = ctx.author
+        self.user = ctx.author
         self.channel = ctx.channel
         self.msg = ctx.message
 
+        self.execute = None
         self.entries = entries
         self.embed = embed
         self.max_pages = len(entries) - 1
@@ -21,17 +25,21 @@ class Paginator:
             ("\N{BLACK LEFT-POINTING TRIANGLE}", self.backward),
             ("\N{BLACK RIGHT-POINTING TRIANGLE}", self.forward),
             ("\N{BLACK SQUARE FOR STOP}", self.stop),
-            ("\N{INFORMATION SOURCE}", self.info)]
+            ("\N{INFORMATION SOURCE}", self.info),
+        ]
 
     async def setup(self):
+        if len(self.entries) == 0:
+            raise PaginationError("No entries.")
+
         if self.embed is False:
             try:
                 self.msg = await self.channel.send(self.entries[0])
             except AttributeError:
                 await self.channel.send(self.entries)
         else:
-            for n, a in enumerate(self.entries):
-                a.set_author(name=f"Page {n + 1} of {len(self.entries)}")
+            for page, embed in enumerate(self.entries, 1):
+                embed.set_author(name=f"Page {page} of {len(self.entries)}")
             try:
                 self.msg = await self.channel.send(embed=self.entries[0])
             except (AttributeError, TypeError):
@@ -90,8 +98,8 @@ class Paginator:
 
         await self.msg.edit(embed=embed)
 
-    def _check(self, reaction, user):
-        if user.id != self.user_.id:
+    def check(self, reaction, user):
+        if user.id != self.user.id:
             return False
 
         if reaction.message.id != self.msg.id:
@@ -104,33 +112,61 @@ class Paginator:
         return False
 
     async def paginate(self):
-        perms = self.ctx.me.guild_permissions.manage_messages
         await self.setup()
 
         while self.paginating:
-            if perms:
-                try:
-                    reaction, user = await self.bot.wait_for("reaction_add", check=self._check, timeout=120)
-                except asyncio.TimeoutError:
-                    return await self.stop()
+            done, pending = await asyncio.wait(
+                [self.bot.wait_for("reaction_add", check=self.check, timeout=120),
+                 self.bot.wait_for("reaction_remove", check=self.check, timeout=120)],
+                return_when=asyncio.FIRST_COMPLETED)
+            try:
+                done.pop().result()
+            except asyncio.TimeoutError:
+                return await self.stop()
 
-                try:
-                    await self.msg.remove_reaction(reaction, user)
-                except discord.HTTPException:
-                    pass
+            for future in pending:
+                future.cancel()
 
-                await self.execute()
-            else:
-                done, pending = await asyncio.wait(
-                    [self.bot.wait_for("reaction_add", check=self._check, timeout=120),
-                     self.bot.wait_for("reaction_remove", check=self._check, timeout=120)],
-                    return_when=asyncio.FIRST_COMPLETED)
-                try:
-                    done.pop().result()
-                except asyncio.TimeoutError:
-                    return await self.stop()
+            await self.execute()
 
-                for future in pending:
-                    future.cancel()
 
-                await self.execute()
+class Tabulator:
+    def __init__(self):
+        self._widths = []
+        self._columns = []
+        self._rows = []
+
+    def set_columns(self, columns):
+        self._columns = columns
+        self._widths = [len(c) + 2 for c in columns]
+
+    def add_row(self, row):
+        rows = [str(r) for r in row]
+        self._rows.append(rows)
+        for index, element in enumerate(rows):
+            width = len(element) + 2
+            if width > self._widths[index]:
+                self._widths[index] = width
+
+    def add_rows(self, rows):
+        for row in rows:
+            self.add_row(row)
+
+    def render(self):
+        sep = "╬".join("═" * w for w in self._widths)
+        sep = f"╬{sep}╬"
+
+        to_draw = [sep]
+
+        def get_entry(d):
+            elem = "║".join(f"{e:^{self._widths[i]}}" for i, e in enumerate(d))
+            return f"║{elem}║"
+
+        to_draw.append(get_entry(self._columns))
+        to_draw.append(sep)
+
+        for row in self._rows:
+            to_draw.append(get_entry(row))
+
+        to_draw.append(sep)
+        return "\n".join(to_draw)

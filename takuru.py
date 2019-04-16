@@ -1,139 +1,168 @@
-import traceback
 import asyncio
-import aiohttp
-import asyncpg
-import wavelink
-import config
 import logging
-from cogs.utils.ezrequests import EasyRequests
-import uvloop
-from cogs.utils.paginator import Paginator
+import os
+import traceback
+from pathlib import Path, PurePath
+from datetime import datetime
+
+import asyncpg
+import aioredis
+import wavelink
 from discord.ext import commands
+import async_pokepy
 
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-logger = logging.getLogger("takuru")
-logger.setLevel(logging.INFO)
-handler = logging.FileHandler(filename="takuru.log", encoding="utf-8", mode="w")
-handler.setFormatter(logging.Formatter("[%(asctime)s:%(levelname)s:%(name)s] %(message)s"))
-logger.addHandler(handler)
+import config
+import utils
 
 
 class RightSiderContext(commands.Context):
     async def paginate(self, entries: list, is_embed: bool = True):
-        await Paginator(self, entries, is_embed).paginate()
+        await utils.Paginator(self, entries, is_embed).paginate()
+
+    async def request(self, method: str, url: str, **params):
+        return await self.bot.ezr.request(method, url, **params)
+
+    @property
+    def db(self):
+        return self.bot.db
 
 
 class TakuruBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or(*config.PREFIXES),
-                         **config.bot)
+        super().__init__(command_prefix=commands.when_mentioned_or(*config.PREFIXES), **config.bot)
+
+        self.init_time = datetime.utcnow()
 
         self.wavelink = wavelink.Client(self)
         self.config = config
+        self.finished_setup = asyncio.Event(loop=self.loop)
 
         self.http_headers = {
-            "User-Agent": "Python:TakuruBot:0.1 (by /u/Pendragon_Lore)"
+            "User-Agent": f"Python aiohttp"
         }
 
-        self.init_cogs = [
-            "cogs.general",
-            "cogs.memes",
-            "cogs.web",
-            "cogs.fun",
-            "cogs.reddit",
-            "cogs.reevoice",
-            "cogs.markov",
-            "cogs.moderator",
-            "cogs.help",
-            "jishaku",
-            "cogs.utils.errorhandler",
-        ]
+        self.init_cogs = [f"cogs.{ext.stem}" for ext in Path("cogs/").glob("*.py")]
 
-        self.possible_responses = ["meh.", "I don't feel like answering right now."]
-
-        # These are here just to avoid PyCharm complaining
         self.db = None
-        self.session = None
+        self._redis = None
         self.ezr = None
+        self.pokeapi = None
 
-        self.logger = logger
+        self.load_init_cogs()
 
-        self.loop.create_task(self.load_init_cogs())
-        self.loop.create_task(self.botvar_setup())
+    @property
+    def python_lines(self):
+        total = 0
+        file_amount = 0
+        for path, subdirs, files in os.walk("."):
+            for name in files:
+                file_dir = f"./{PurePath(path, name)}"
+                if not name.split(".")[-1] == "py" or "env" in file_dir:
+                    continue
+                file_amount += 1
+                with open(file_dir, "r", encoding="utf-8") as file:
+                    for line in file:
+                        if not line.strip().startswith("#") or len(line.strip()) == 0:
+                            total += 1
+
+        return total, file_amount
+
+    @property
+    def uptime(self):
+        delta_uptime = datetime.utcnow() - bot.init_time
+        hours, remainder = divmod(int(delta_uptime.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        days, hours = divmod(hours, 24)
+        return f"{days}d, {hours}h, {minutes}m, {seconds}s"
+
+    def dispatch(self, event_name, *args, **kwargs):
+        if not self.finished_setup.is_set() and event_name in ("message", "command", "command_error"):
+            return
+
+        return super().dispatch(event_name, *args, **kwargs)
 
     async def on_ready(self):
-        print(f"\nLogged in as {self.user.name}")
-        print("Current guilds:", end=" ")
-        for guild in self.guilds:
-            print(f"{guild.name} (ID: {guild.id} Owner: {guild.owner})", end=" | ")
-        print()
-        print("\n------------\n")
-        self.logger.info("Bot succesfully booted up.")
+        if self.finished_setup.is_set():
+            return
+
+        self._redis = await asyncio.wait_for(
+            aioredis.create_redis_pool("redis://localhost", password=self.config.REDIS,
+                                       maxsize=10, minsize=5), timeout=20.0
+        )
+
+        log.info("Connected to Redis")
+        self.db = await asyncpg.create_pool(**config.db)
+        log.info("Connected to Postgres")
+
+        self.pokeapi = await async_pokepy.Client.connect(loop=self.loop)
+        self.ezr = await utils.EasyRequests.start(bot)
+        log.info("Finished setting up API stuff")
+
+        self.finished_setup.set()
+
+        log.info("Bot succesfully booted up.")
+        log.info(f"Total guilds: {len(self.guilds)} users: {len(self.users)}")
+
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+        if message.content == self.user.mention:
+            await message.add_reaction(utils.FESTIVE)
+
+        ctx = await self.get_context(message, cls=RightSiderContext)
+        await self.invoke(ctx)
 
     async def on_command(self, ctx):
         try:
-            self.logger.info(f"{ctx.message.author} ran command {ctx.command.name} "
-                             f"in the guild {ctx.guild.name} in #{ctx.channel.name}")
+            log.info(f"{ctx.message.author} ran command {ctx.command.name} "
+                     f"in {ctx.guild.name} in #{ctx.channel.name}")
         except AttributeError:
             pass
 
     async def on_guild_join(self, guild):
-        self.logger.info(f"The bot just joined {guild.name} (ID: {guild.id} Owner: {guild.owner})")
+        log.info(f"Joined from guild {guild} with {guild.member_count} members, owner: {guild.owner}")
 
     async def on_guild_remove(self, guild):
-        self.logger.info(f"I just joined {guild.name} (ID: {guild.id} Owner: {guild.owner})")
+        log.info(f"Removed from guild {guild} with {guild.member_count} members, owner: {guild.owner}")
 
-    async def get_context(self, message, *, cls=None):
-        return await super().get_context(message, cls=RightSiderContext)
+    async def close(self):
+        await self.ezr.close()
+        await self.pokeapi.close()
+        await super().close()
 
-    async def load_init_cogs(self):
-        # This function is a coroutine and this is here because fuck aiohttp
-        self.session = aiohttp.ClientSession(loop=self.loop, headers=self.http_headers)
-        self.ezr = EasyRequests(self)
-
-        print("\n\n### COG LOADING ###\n\n")
-        self.logger.info("Loading cogs...")
+    def load_init_cogs(self):
+        log.info("Loading cogs...")
         for cog in self.init_cogs:
-            ext = cog.replace("cogs.", "")
             try:
                 self.load_extension(cog)
-                print(f"Succesfully loaded cog {ext}")
-                self.logger.info(f"Succesfully loaded {ext}")
+                log.info(f"Succesfully loaded {cog}")
             except Exception as e:
-                print(f"Failed to load {ext}.")
+                log.critical(f"Failed to load {cog} [{type(e).__name__}{e}]")
                 traceback.print_exc()
-                self.logger.critical(f"Failed to load {ext} [{type(e).__name__}{e}]")
 
-    async def botvar_setup(self):
-        print(f"\n\n### POSTGRES CONNECTION ###\n\n")
-        self.logger.info("Connecting to postgres...")
-
+    async def redis(self, *args, **kwargs):
         try:
-            print(f"Connecting to postgres...")
+            return await self._redis.execute(*args, **kwargs)
+        except aioredis.errors.PoolClosedError:
+            return
 
-            pool = await asyncpg.create_pool(**config.db, loop=self.loop)
-            self.db = await pool.acquire()
 
-        except asyncpg.PostgresConnectionError as e:
-            print("Failed to connect to Postgres.")
-            self.logger.fatal(f"Failed to connect to Postgres [{type(e).__name__}{e}]")
-            print(e.__traceback__)
-        else:
-            self.logger.info("Connection succesful.")
-            print("Connection succesful")
-
-    async def shutdown(self):
-        await self.session.close()
-        await self.logout()
-
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("takuru")
+log.setLevel(logging.INFO)
 
 bot = TakuruBot()
 
-try:
-    bot.loop.run_until_complete(bot.start(bot.config.TAKURU_TOKEN))
-except KeyboardInterrupt:
-    bot.loop.run_until_complete(bot.shutdown())
+handler = logging.FileHandler(filename=f"pokecom/takuru {bot.init_time.strftime('%Y-%m-%d_%H.%M.%S.%f')}.log",
+                              encoding="utf-8",
+                              mode="w")
+handler.setFormatter(logging.Formatter("[%(asctime)s:%(levelname)s]%(name)s %(message)s"))
+log.addHandler(handler)
 
-    bot.logger.info("Bot logged out.")
-    print("\n\nLogged out!")
+try:
+    bot.loop.run_until_complete(bot.start(config.TAKURU_TOKEN))
+except KeyboardInterrupt:
+    bot.loop.run_until_complete(bot.close())
+finally:
+    log.info("Logged out")
+    print("Logged out")

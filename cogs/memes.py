@@ -1,23 +1,74 @@
 import discord
+import random
+import more_itertools
+import asyncio
 from discord.ext import commands
 
 
-# TODO fix sql queries
+class MemeName(commands.clean_content):
+    async def convert(self, ctx, argument):
+        converted = await super().convert(ctx, argument)
+        lower = converted.lower().strip()
+
+        if not lower:
+            raise commands.BadArgument("Name is a required argument that is missing")
+
+        if len(lower) > 128:
+            raise commands.BadArgument("Meme name can be up to 128 characters.")
+
+        fw, _, _ = lower.partition(" ")
+        if fw in ctx.bot.get_command("meme").all_commands:
+            raise commands.BadArgument("This meme name starts with a reserved word.")
+
+        return converted
+
+
 class Memes(commands.Cog):
     """EPIC M E M E Z"""
 
-    def __init__(self, bot):
-        self.bot = bot
+    @commands.command(name="install")
+    async def install_(self, ctx, *, package: str):
+        """Install a package from homebrew."""
+        msg = await ctx.send("Updating homebrew...")
 
-    @staticmethod
-    def chunks(l, n):
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
+        await asyncio.sleep(3)
+
+        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n" 
+                               "==> Searching for a previously deleted formula (in the last month)...")
+
+        await asyncio.sleep(2)
+
+        await msg.edit(content=f"{msg.content}\n\n**Error**: No previously deleted formula found.\n"
+                               "==> Searching for similarly named formulae.")
+
+        await asyncio.sleep(1)
+
+        await msg.edit(content=f"{msg.content}\n==> Searching taps...\n"
+                               "==> Searching taps on GitHub...\n"
+                               "**Error**: No formulae found in taps.")
+
+        await asyncio.sleep(2)
+
+        await ctx.send("tldr no")
+
+    @commands.command(name="realquote")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def real_quote(self, ctx):
+        """Get an inspring quote..."""
+        def predicate(m):
+            return m.content and not m.author == ctx.bot.user and not any(m.content.startswith(p)
+                                                                          for p in ctx.bot.config.PREFIXES)
+        messages = await ctx.channel.history(limit=100).filter(predicate).flatten()
+        if not messages:
+            return await ctx.send("No quotes for today... 😔")
+
+        quote = random.choice(messages)
+        return await ctx.send(f"A certain {quote.author.name} once said: *\"{quote.content}\"* 😔")
 
     async def generate_embeds(self, ctx, meme_list):
         embeds = []
 
-        for x in self.chunks(meme_list, 20):
+        for x in more_itertools.chunked(meme_list, 20):
             meme_embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
             meme_embed.set_footer(text=f"Total Memes: {len(meme_list)}")
 
@@ -32,78 +83,69 @@ class Memes(commands.Cog):
         await ctx.paginate(embeds)
 
     async def round_search(self, ctx, name):
-        search = """SELECT name
-                            FROM memes
-                            WHERE serverid=$1 AND name % $2
-                            ORDER BY similarity(name, $2) DESC
-                            LIMIT 15;
-                        """
+        sql = """SELECT name
+                    FROM memes
+                    WHERE serverid=$1 AND name % $2
+                    ORDER BY similarity(name, $2) DESC, name ASC
+                    LIMIT 15;"""
 
-        ty = await self.bot.db.fetch(search, ctx.guild.id, name)
+        search = await ctx.db.fetch(sql, ctx.guild.id, name)
 
-        results = []
-
-        for t in ty:
-            results.append(t["name"])
+        results = [result["name"] for result in search]
 
         return results
 
     @commands.group(name="meme", invoke_without_command=True, case_insensitive=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme(self, ctx, *, meme=None):
+    async def meme(self, ctx, *, meme: MemeName = None):
         """Memes related functions, all persistent and guild-locked."""
 
-        if not meme or meme.lower() == "help":
-            await ctx.send_help("meme")
+        if not meme:
+            return await ctx.send_help("meme")
 
         await ctx.invoke(self.meme_send, name=meme)
 
     @meme.command(name="get", aliases=["send"])
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_send(self, ctx, *, name):
+    async def meme_send(self, ctx, *, name: MemeName):
         """Search and send a meme."""
-
-        name = name.lower()
-
         sql = """SELECT content
                     FROM memes
-                    WHERE serverid=$1 AND name=$2;
-                """
+                    WHERE serverid=$1 AND name=$2;"""
 
-        meme = await self.bot.db.fetchval(sql, ctx.guild.id, name)
+        meme = await ctx.db.fetchval(sql, ctx.guild.id, name)
 
         if not meme:
             results = await self.round_search(ctx, name)
 
             if not results:
-                return await ctx.send("That meme doesn't exist.")
+                return await ctx.send("Meme not found.")
 
             results.sort()
 
             results = "\n".join(results)
 
-            return await ctx.send(f"That meme doesn't exist. Did you mean?\n{results}")
+            return await ctx.send(f"Meme not found. Did you mean..\n{results}")
 
-        await self.bot.db.execute("UPDATE memes SET count = count + 1 WHERE name = $1 AND serverid = $2;",
+        await ctx.db.execute("UPDATE memes SET count = count + 1 WHERE name = $1 AND serverid = $2;",
                                   name, ctx.guild.id)
 
         await ctx.send(meme)
 
     @meme.command(name="claim")
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_claim(self, ctx, *, meme):
+    async def meme_claim(self, ctx, *, meme: MemeName):
         """Get the ownership of a meme.
         The original owner must be out of the guild."""
-
         check = await self.owner_check(ctx, meme)
 
         if check is None:
-            return await ctx.send("That meme doesn't exist.")
+            return await ctx.send("Meme not found.")
 
         if check == ctx.author.id:
             return await ctx.send("You already own that meme.")
 
-        member = discord.utils.find(lambda m: m.id == check, ctx.guild.members)
+        member = discord.utils.get(ctx.guild.members, id=check)
 
         if member:
             return await ctx.send("The user is still in the guild.")
@@ -111,26 +153,22 @@ class Memes(commands.Cog):
         sql = """UPDATE memes
                     SET ownerid = $1 
                     WHERE name = $2 
-                    AND ServerID = $3;
-                """
+                    AND ServerID = $3;"""
 
-        await self.bot.db.execute(sql, ctx.author.id, meme, ctx.guild.id)
+        await ctx.db.execute(sql, ctx.author.id, meme, ctx.guild.id)
 
         await ctx.send("You are now the owner of that meme.")
 
     @meme.command(name="add")
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_add(self, ctx, name, *, content):
+    async def meme_add(self, ctx, name: MemeName, *, content: commands.clean_content):
         """Adds a meme."""
-
-        name = name.lower()
-
         check_sql = """SELECT name
                             FROM memes 
                             WHERE name = $2 
-                            AND serverid = $1;
-                        """
-        check = await self.bot.db.fetchval(check_sql, ctx.guild.id, name)
+                            AND serverid = $1;"""
+
+        check = await ctx.db.fetchval(check_sql, ctx.guild.id, name)
 
         if check is not None:
             return await ctx.send(f"Meme {name} already exists.")
@@ -138,46 +176,38 @@ class Memes(commands.Cog):
         sql = """INSERT INTO memes
                         (serverid, name, content, ownerid) 
                         VALUES 
-                        ($1, $2, $3, $4);
-                    """
+                        ($1, $2, $3, $4);"""
 
-        await self.bot.db.execute(sql, ctx.guild.id, name, content, ctx.author.id)
+        await ctx.db.execute(sql, ctx.guild.id, name, content, ctx.author.id)
 
-        await ctx.send(f"Succesfuly added meme {name}.\n\nContent is {content}")
+        await ctx.send(f"Successfully added meme {name}.")
 
     @meme.command(name="list", aliases=["lis"])
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_list(self, ctx):
         """Get a list of all the guild's memes."""
-
-        sql = """SELECT *
+        sql = """SELECT name
                     FROM memes 
-                    WHERE ServerID=$1;
-                """
+                    WHERE ServerID=$1
+                    ORDER BY name ASC;"""
 
-        memes = await self.bot.db.fetch(sql, ctx.guild.id)
+        memes = await ctx.db.fetch(sql, ctx.guild.id)
 
-        if len(memes) == 0:
+        if not memes:
             return await ctx.send("There are no logged memes.")
 
-        memes.sort()
-
-        memes_list = []
-
-        for index, meme in enumerate(memes):
-            memes_list.append(str(index + 1) + ". " + meme[1])
+        memes_list = [f"{index}. {meme['name']}" for index, meme in enumerate(memes, 1)]
 
         await self.generate_embeds(ctx, memes_list)
 
     @meme.command(name="remove", aliases=["delete", "del"])
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_remove(self, ctx, *, name):
-        """Delete a meme, you must be the owner of it."""
-
+    async def meme_remove(self, ctx, *, name: MemeName):
+        """Delete a meme, you must own it."""
         check = await self.owner_check(ctx, name)
 
         if check is None:
-            return await ctx.send("That meme doesn't exist.")
+            return await ctx.send("Meme not found.")
 
         if check != ctx.author.id:
             return await ctx.send("You are not the meme's owner.")
@@ -185,41 +215,37 @@ class Memes(commands.Cog):
         sql = """DELETE
                     FROM memes 
                     WHERE ServerID=$1 
-                    AND name=$2;
-                """
+                    AND name=$2;"""
 
-        await self.bot.db.execute(sql, ctx.guild.id, name)
+        await ctx.db.execute(sql, ctx.guild.id, name)
 
-        await ctx.send(f"Succesfully deleted meme {name}.")
+        await ctx.send(f"Successfully deleted meme {name}.")
 
     @meme.command(name="search")
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_search(self, ctx, *, query):
+    async def meme_search(self, ctx, *, name: MemeName):
         """Searches for a meme.
         The query must be at least 3 characters."""
+        results = await self.round_search(ctx, name)
 
-        results = await self.round_search(ctx, query)
+        if len(name) < 3:
+            return await ctx.send("The query must be at least 3 characters.")
 
         if not results:
             return await ctx.send("Search returned nothing.")
 
-        results.sort()
-        memes = []
-
-        for index, r in enumerate(results):
-            memes.append(f"{index + 1}. {r}")
+        memes = [f"{index}. {meme}" for index, meme in enumerate(results, 1)]
 
         await self.generate_embeds(ctx, memes)
 
     @meme.command(name="edit")
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_edit(self, ctx, name, *, new_content):
-        """Edit a meme's content, you must be the owner of it."""
-
+    async def meme_edit(self, ctx, name: MemeName, *, new_content: commands.clean_content):
+        """Edit a meme's content, you must own it."""
         check = await self.owner_check(ctx, name)
 
         if check is None:
-            return await ctx.send("That meme doesn't exist.")
+            return await ctx.send("Meme not found.")
 
         if check != ctx.author.id:
             return await ctx.send("You are not the meme's owner.")
@@ -227,42 +253,37 @@ class Memes(commands.Cog):
         sql = """UPDATE memes
                     SET content = $1
                     WHERE serverid = $2 
-                    AND name = $3;
-                """
+                    AND name = $3;"""
 
-        await self.bot.db.execute(sql, new_content, ctx.guild.id, name)
+        await ctx.db.execute(sql, new_content, ctx.guild.id, name)
 
         await ctx.send(f"Updated content of {name} to {new_content}")
 
     async def owner_check(self, ctx, name):
-        check_sql = """SELECT *
-                            FROM memes
-                            WHERE serverid = $1
-                            AND name = $2;"""
+        check_sql = """SELECT ownerid
+                          FROM memes
+                          WHERE serverid = $1
+                          AND name = $2;"""
 
-        check = await self.bot.db.fetchval(check_sql, ctx.guild.id, name, column=3)
+        check = await ctx.db.fetchval(check_sql, ctx.guild.id, name)
 
         return check
 
     @meme.command(name="info")
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_info(self, ctx, *, meme):
+    async def meme_info(self, ctx, *, name: MemeName):
         """Get a meme's info."""
-
         sql = """SELECT *
                     FROM memes
                     WHERE serverid = $1
-                    AND name = $2;
-                """
+                    AND name = $2;"""
 
-        data = await self.bot.db.fetch(sql, ctx.guild.id, meme)
+        data = dict((await ctx.db.fetchrow(sql, ctx.guild.id, name)))
 
         if not data:
-            return await ctx.send("That meme doesn't exist.")
+            return await ctx.send("Meme not found.")
 
-        data = dict(data[0])
-
-        owner = self.bot.get_user(data["ownerid"])
+        owner = ctx.bot.get_user(data["ownerid"])
 
         embed = discord.Embed(
             colour=discord.Colour.from_rgb(54, 57, 62),
@@ -279,6 +300,35 @@ class Memes(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @meme.command(name="transfer")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def transfer_ownership(self, ctx, name: MemeName, recipient: discord.Member):
+        """Transfer the ownership of a meme, you must own it."""
+        check_sql = """SELECT name
+                        FROM memes
+                        WHERE name=$1 AND serverid=$2;"""
+
+        another_check = await ctx.db.fetchval(check_sql, name, ctx.guild.id)
+
+        if not another_check:
+            return await ctx.send(f"No meme named {name} found.")
+
+        if recipient.id == ctx.author.id:
+            return await ctx.send(f"You already own {name}.")
+
+        check = await self.owner_check(ctx, name)
+
+        if not check == ctx.author.id:
+            return await ctx.send(f"You are not the owner of {name}.")
+
+        sql = """UPDATE memes
+                    SET ownerid=$1
+                    WHERE name=$2 AND serverid=$3;"""
+
+        await ctx.db.execute(sql, recipient.id, name, ctx.guild.id)
+
+        await ctx.send(f"{recipient} is now the owner of {name}.")
+
 
 def setup(bot):
-    bot.add_cog(Memes(bot))
+    bot.add_cog(Memes())

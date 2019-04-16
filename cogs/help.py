@@ -1,5 +1,6 @@
 from discord.ext import commands
-from .utils.helpformatter import TakuruHelpCommand
+
+from utils import TakuruHelpCommand
 
 
 class Help(commands.Cog):

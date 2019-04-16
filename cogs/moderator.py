@@ -1,3 +1,5 @@
+import typing
+
 import discord
 from discord.ext import commands
 
@@ -5,58 +7,69 @@ from discord.ext import commands
 class Moderator(commands.Cog):
     """Commands for moderation purposes."""
 
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(name="clear", aliases=["purge", "clean", "prune"])
+    @commands.command(name="purge", aliases=["prune"])
     @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def bulk_delete(self, ctx, amount=5):
-        """Bulk-delete a certain amout of messages in the current channel.
-        5 is the default amount."""
+    async def bulk_delete(self, ctx, amount: int, member: typing.Optional[discord.Member] = None):
+        """Bulk-delete a certain amout of messages in the current channel."""
+        if member is not None:
+            check = lambda m: m.author.id == member.id
+        else:
+            check = None
 
-        purge = await ctx.channel.purge(limit=amount)
+        purge = await ctx.channel.purge(limit=amount, check=check, bulk=True)
 
         try:
             await ctx.message.delete()
-        except discord.Forbidden:
+        except discord.HTTPException:
             pass
 
-        await ctx.send(f"Succesfuly deleted {len(purge)} message(s).", delete_after=5)
+        await ctx.send(f"Succesfuly deleted {len(purge)} message(s).")
 
     @commands.command(name="kick")
     @commands.has_permissions(kick_members=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def kick(self, ctx, *members: discord.Member):
+    async def kick(self, ctx, *, members: commands.Greedy[discord.Member]):
         """Kick a single or multiple users."""
+        if not members:
+            return await ctx.send("You must mention at least one member to kick.")
 
-        if len(members) == 0:
-            return await ctx.send("You must mention at least a user to ban.")
+        banned = []
+        for member in members:
+            try:
+                await member.kick()
+                banned.append(str(member))
+            except discord.Forbidden:
+                continue
 
-        kicked_users = []
-        for u in members:
-            await u.kick()
-            kicked_users.append(str(u))
-        kicked_users = ", ".join(kicked_users)
+        if not members:
+            return await ctx.send(f"Couldn't kick anyone.")
 
-        await ctx.send(f"Whoops, {kicked_users} got kicked!")
+        await ctx.send(f"{', '.join(banned)} got kicked."
+                       f" (If any members are missing it's because I don't have the necessary permissions)")
 
     @commands.command(name="ban")
     @commands.has_permissions(ban_members=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def ban(self, ctx, *members: discord.Member):
+    async def ban(self, ctx, *, members: commands.Greedy[discord.Member]):
         """Ban a single or multiple users."""
-        if len(members) == 0:
-            return await ctx.send("You must mention at least an user to ban.")
+        if not members:
+            return await ctx.send("You must mention at least one member to ban.")
 
-        banned_users = []
-        for user in members:
-            await user.ban()
-            banned_users.append(f"{user.name}#{user.discriminator}")
-        banned_users = ", ".join(banned_users)
+        banned = []
+        for member in members:
+            try:
+                await member.ban()
+                banned.append(str(member))
+            except discord.Forbidden:
+                continue
 
-        await ctx.send(f"{banned_users} got the hammer!")
+        if not members:
+            return await ctx.send(f"Couldn't ban anyone.")
+
+        await ctx.send(f"{', '.join(banned)} got the ban hammer."
+                       f" (If any members are missing it's because I don't have the necessary permissions)")
 
 
 def setup(bot):
-    bot.add_cog(Moderator(bot))
+    bot.add_cog(Moderator())

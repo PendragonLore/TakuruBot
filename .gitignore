@@ -119,7 +119,6 @@ venv.bak/
 .mypy_cache/
 
 *.DS_Store
-kek
-upgrade_rewrite.command
-.vscode/settings.json
 *.png
+markov/
+supervisord.conf

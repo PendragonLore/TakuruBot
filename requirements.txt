@@ -1,0 +1,12 @@
+discord.py[voice]
+jishaku
+git+https://github.com/PendragonLore/async_pokepy
+aiofiles
+git+https://github.com/EvieePy/Wavelink
+aioredis
+asyncpg
+pillow
+more_itertools
+youtube_dl
+async_cse
+beautifulsoup4

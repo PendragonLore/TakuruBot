@@ -1,7 +1,10 @@
 import random
 import re
-import aiofiles # Using aiofiles because I'm way too lazy to rewrite this for DB integration.
+
+import aiofiles  # Using aiofiles because I'm way too lazy to rewrite this for DB integration.
 from discord.ext import commands
+
+from utils.emotes import POPULAR
 
 
 class Markov(commands.Cog):
@@ -13,42 +16,34 @@ class Markov(commands.Cog):
         self.punctuation = ["!", ".", "?", "-"]
 
     async def cog_check(self, ctx):
-        return ctx.guild.id in self.bot.config.markov_guilds
+        return ctx.guild.id in ctx.bot.config.markov_guilds
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot:
-            return
-        if message.content == self.bot.user.mention:
-            return await message.channel.send("<:popular:550253474370027521>? Got something to say? If not then please don't ping me, Discor-- *insert here Takuru style lecture about Discord pings.*")
-
         await self.markovlogging(message)
 
     async def markovlogging(self, message):
-        prefixes = [".", "f?", "h?", "!", "mh!",
-                    ";;", "=", "--", "%", "t!",
-                    "m!", "mt!"]
-        if not message.content:
-            pass
-        elif any(message.content.lower().startswith(prefix) for prefix in prefixes):
-            pass
-        elif message.guild.id not in (477245169167499274, 367993886070669354):
-            pass
-        else:
-            random_int = random.randint(1, 602)
-            async with aiofiles.open(f"cogs/utils/markov/markov ({random_int}).txt", "a+") as markovdb:
-                _message = message.content
+        if message.author.bot:
+            return
+        if not message.content or message.guild.id not in self.bot.config.markov_guilds:
+            return
+        prefixes = [".", "f?", "h?", "!", "mh!",";", "=", "--", "%", "t!", "m!", "mt!"]
+        if any(message.content.lower().startswith(prefix) for prefix in prefixes):
+            return
 
-                if len(message.content.split()) <= 3 or any(punct in message.content for punct in self.punctuation):
-                    dot = ""
-                else:
-                    dot = "."
+        random_int = random.randint(1, 602)
+        async with aiofiles.open(f"markov/markov ({random_int}).txt", "a+") as markovdb:
+            _message = message.content
+            dot = "."
 
-                for key, value in self.bot.config.ignored_mentions.items():
-                    _message = _message.replace(key, value)
+            if len(message.content.split()) <= 3 or any(punct in message.content for punct in self.punctuation):
+                dot = ""
 
-                await markovdb.write(f"{_message}{dot}\n")
-                await markovdb.close()
+            for key, value in self.bot.config.ignored_mentions.items():
+                _message = _message.replace(key, value)
+
+            await markovdb.write(f"{_message}{dot}\n")
+            await markovdb.close()
 
     @commands.command()
     @commands.is_owner()
@@ -57,9 +52,9 @@ class Markov(commands.Cog):
 
         randomized_int = random.randint(1, 602)
 
-        t_path = f"cogs/utils/markov/markov ({randomized_int}).txt"
+        t_path = f"markov/markov ({randomized_int}).txt"
         async with aiofiles.open(t_path) as file:
-            word_dictionary = await self.learn(await file.read())
+            word_dictionary = self.learn(await file.read())
             await ctx.send(word_dictionary)
 
     @commands.command()
@@ -72,11 +67,10 @@ class Markov(commands.Cog):
             message = " ".join(message_to_log)
             randomized_int = random.randint(1, 602)
 
-            async with aiofiles.open(f"cogs/utils/markov/markov ({randomized_int}).txt", "a+") as markovdb:
+            async with aiofiles.open(f"markov/markov ({randomized_int}).txt", "a+") as markovdb:
+                dot = "."
                 if len(message) <= 3 or any(punct in message for punct in ["!", ".", "?", "-"]):
                     dot = ""
-                else:
-                    dot = "."
 
                 markovdb.write(f"{message}{dot}\n")
 
@@ -85,18 +79,18 @@ class Markov(commands.Cog):
     async def markovgen(self, ctx):
         result = ""
         randomized_int = random.randint(1, 602)
-        path = f"cogs/utils/markov/markov ({randomized_int}).txt"
+        path = f"markov/markov ({randomized_int}).txt"
 
         async with aiofiles.open(path) as file:
-            word_dictionary = await self.learn(await file.read())
+            word_dictionary = self.learn(await file.read())
             punctuation = False
             last_word = "~~~~~~~~~~~~~~~~"
             counter = 0
 
             while not punctuation:
-                new_word = (await self.get_next_word(last_word, word_dictionary)).rstrip()
+                new_word = self.get_next_word(last_word, word_dictionary).rstrip()
                 result = result + " " + new_word
-                result.replace("\r\n", '')
+                result.replace("\n", "")
                 last_word = new_word
 
                 if len(result.split(" ")) > random.randint(3, 8) and any(
@@ -106,13 +100,13 @@ class Markov(commands.Cog):
                 counter += 1
 
                 if counter >= 40:
-                    return await ctx.send("No punct found")
+                    return await ctx.send("No punct found.")
 
         result = " ".join(result.split())
         result = result[0].upper() + result[1:]
         await ctx.send(result)
 
-    async def learn(self, _input):
+    def learn(self, _input):
         _dict = {}
         word_tokens = re.split(" |\n", _input)
 
@@ -121,40 +115,34 @@ class Markov(commands.Cog):
             next_word = word_tokens[i + 1]
 
             if current_word not in _dict:
-                # Create new entry in dictionary
                 _dict[current_word] = {next_word: 1}
             else:
-                # Current word already exists
                 all_next_words = _dict[current_word]
 
                 if next_word not in all_next_words:
-                    # Add new next state (word)
                     _dict[current_word][next_word] = 1
                 else:
-                    # Already exists, just increment
                     _dict[current_word][next_word] += 1
 
         return _dict
 
-    async def get_next_word(self, last_word, _dict):
+    def get_next_word(self, last_word, _dict):
         if last_word not in _dict:
-            # Random
-            new_word = await self.pick_random(_dict)
+            new_word = self.pick_random(_dict)
             return new_word
-        else:
-            # Pick next word from list
-            candidates = _dict[last_word]
-            candidates_normalised = []
 
-            for word in candidates:
-                freq = candidates[word]
-                for i in range(0, freq):
-                    candidates_normalised.append(word)
+        candidates = _dict[last_word]
+        candidates_normalised = []
 
-            rnd = random.randint(0, len(candidates_normalised) - 1)
-            return candidates_normalised[rnd]
+        for word in candidates:
+            freq = candidates[word]
+            for _ in range(0, freq):
+                candidates_normalised.append(word)
 
-    async def pick_random(self, _dict):
+        rnd = random.randint(0, len(candidates_normalised) - 1)
+        return candidates_normalised[rnd]
+
+    def pick_random(self, _dict):
         random_num = random.randint(0, len(_dict) - 1)
         new_word = list(_dict.keys())[random_num]
         return new_word
@@ -163,7 +151,9 @@ class Markov(commands.Cog):
     async def mlog_handler(self, ctx, error):
         if isinstance(error, commands.CheckFailure):
             return await ctx.send(
-                "I'm sorry, but the markov chaining functions and logging of this bot is, for now, only enabled on specific guilds selected by my owner.", )
+                "The markov chaining functions and logging of this bot is, for now, "
+                "only enabled on specific guilds selected by my owner."
+            )
 
 
 def setup(bot):
