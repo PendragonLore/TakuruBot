@@ -4,8 +4,6 @@ import re
 import aiofiles  # Using aiofiles because I'm way too lazy to rewrite this for DB integration.
 from discord.ext import commands
 
-from utils.emotes import POPULAR
-
 
 class Markov(commands.Cog):
     """This cog handles the Markov logging and chaining of this bot.
