@@ -9,4 +9,4 @@ pillow
 more_itertools
 youtube_dl
 async_cse
-beautifulsoup4
+lxml
