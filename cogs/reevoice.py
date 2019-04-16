@@ -240,7 +240,7 @@ class ReeMusic(commands.Cog, name="Music"):
                 return await ctx.send(f"No song with ID {index}, check the queue.")
 
         await ctx.send(f"Skipped **{player.current.title}**.")
-        player.next.set()
+        await player.stop()
 
     @commands.command(name="disconnect")
     # @Player.state_check()
