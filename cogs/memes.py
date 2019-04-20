@@ -288,7 +288,7 @@ class Memes(commands.Cog):
                     WHERE guild_id = $1
                     AND name = $2;"""
 
-        data = dict((await ctx.db.fetchrow(sql, ctx.guild.id, name)))
+        data = await ctx.db.fetchrow(sql, ctx.guild.id, name)
 
         if not data:
             return await ctx.send("Meme not found.")
