@@ -28,7 +28,7 @@ class Memes(commands.Cog):
     """EPIC M E M E Z"""
 
     @commands.command(name="install")
-    async def install_(self, ctx, *, package: str):
+    async def install_(self, ctx, *, package: commands.clean_content):
         """Install a package from homebrew."""
         msg = await ctx.send("Updating homebrew...")
 
