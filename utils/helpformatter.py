@@ -3,7 +3,10 @@ from discord.ext import commands
 
 class TakuruHelpCommand(commands.HelpCommand):
     def __init__(self):
-        super().__init__()
+        super().__init__(command_attrs={
+            "aliases": ["halp", "help"],
+            "hidden": True
+        })
 
     def get_command_signature(self, command):
         if command.parent:
@@ -65,7 +68,10 @@ class TakuruHelpCommand(commands.HelpCommand):
             cmd_filter = await self.filter_commands(cog_cmds, sort=True)
 
             if cmd_filter:
-                line = f"**{cog.qualified_name}** - "
+                if cog is not None:
+                    line = f"**{cog.qualified_name}** - "
+                else:
+                    line = f"**No extension** - "
 
                 for cmd in cmd_filter:
                     if isinstance(cmd, commands.Group):

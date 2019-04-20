@@ -1,9 +1,13 @@
+from datetime import datetime
+
 import async_cse
 import discord
 import youtube_dl
-from jishaku.functools import executor_function
-from async_pokepy import PokemonException
+import async_pokepy
+import lxml.etree as etree
+import humanize
 from discord.ext import commands
+from jishaku.functools import executor_function
 
 
 class NoMoreAPIKeys(Exception):
@@ -119,6 +123,7 @@ class Web(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def yt_search(self, ctx, *, video):
         """Get the first video of a youtube search."""
+
         @executor_function
         def get_data():
             return self.ytdl.extract_info(url=f"ytsearch:{video}", download=False)
@@ -236,22 +241,24 @@ class Web(commands.Cog):
 
         await ctx.send(url)
 
-    @commands.command(name="pokemon")
+    @commands.command(name="pokemon", aliases=["poke", "pokedex"])
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def pokemon(self, ctx, *, name):
         try:
             pokemon = await ctx.bot.pokeapi.get_pokemon(name)
-        except PokemonException:
+        except async_pokepy.PokemonException:
             return await ctx.send("Search returned nothing.")
 
         fmt_types = " and ".join(pokemon.types)
 
-        embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62), title=f"`{pokemon.id}` - {pokemon}",
-                              description=f"**Type(s)** {fmt_types} | **Weight**: {pokemon.weight / 10} kg "
-                              f"| **Height**: {pokemon.height * 10} cm")
+        embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
+        embed.description = f"**Type(s)** {fmt_types} | **Weight**: {pokemon.weight / 10} kg | **Height**: {pokemon.height * 10} cm"
+        embed.set_author(name=f"{pokemon.id} - {pokemon}",
+                         icon_url="http://cdn.marketplaceimages.windowsphone.com/v8/images/"
+                                  "757b4a77-b530-4997-822f-f03decfaa6b6?imageType=ws_icon_medium")
         stats = [o + str(a) for o, a in
-                 (zip(("**HP**: ", "**Atk**: ", "**Def**: ", "**Sp. Atk**: ", "**Sp. Def**: ", "**Spd**: "),
-                      pokemon.stats))]
+                 zip(("**HP**: ", "**Atk**: ", "**Def**: ", "**Sp. Atk**: ", "**Sp. Def**: ", "**Spd**: "),
+                     pokemon.stats)]
         embed.add_field(name="Stats", value="\n".join(stats))
 
         embed.set_thumbnail(url=pokemon.sprites["front_default"].url)
@@ -350,6 +357,34 @@ class Web(commands.Cog):
             d.append(dict_data)
 
         return d
+
+    @commands.command(name="osu")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def osu(self, ctx, user):
+        """Get info on a osu! user."""
+        results = await ctx.request("GET", "https://osu.ppy.sh/api/get_user", k=ctx.bot.config.OSU_KEY, u=user)
+        d = results[0]
+
+        desc = f"**Total beatmaps**: {d['count300']} | **PP rank**: {d['pp_rank']} | **Level**: {d['level']}"
+        embed = discord.Embed(title=f"{d['username']} - {d['user_id']}", description=desc)
+        embed.add_field(name="`SS/SSH` country ranks", value=f"{d['count_rank_ss']}/{d['count_rank_ssh']}")
+        embed.add_field(name="Total/Ranked", value=f"`{d['total_score']}/{d['ranked_score']}`")
+        embed.add_field(name="Total seconds played", value=d["total_seconds_played"])
+        embed.add_field(name="Country", value=d["country"])
+        joined_at = datetime.strptime(d["join_date"], "%Y-%m-%d %H:%M:%S")
+
+        embed.add_field(name="Jointed at", value=f"{humanize.naturaldate(joined_at)}"
+        f" ({humanize.naturaldelta(joined_at - datetime.utcnow())} ago)")
+        if d["events"]:
+            text = []
+            for event in d["events"]:
+                nodes = etree.fromstring(event["display_html"], etree.HTMLParser())
+                k = "".join(nodes.xpath("//text()"))
+                text.append(k)
+            fin = "\n".join(text)
+            embed.add_field(name="Events", value=f"``{fin}``")
+
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

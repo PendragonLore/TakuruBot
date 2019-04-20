@@ -1,9 +1,10 @@
 import asyncio
 
 import discord
+from discord.ext import commands
 
 
-class PaginationError(Exception):
+class PaginationError(commands.CommandInvokeError):
     pass
 
 

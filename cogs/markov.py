@@ -25,7 +25,7 @@ class Markov(commands.Cog):
             return
         if not message.content or message.guild.id not in self.bot.config.markov_guilds:
             return
-        prefixes = [".", "f?", "h?", "!", "mh!",";", "=", "--", "%", "t!", "m!", "mt!"]
+        prefixes = [".", "f?", "h?", "!", "mh!", ";", "=", "--", "%", "t!", "m!", "mt!"]
         if any(message.content.lower().startswith(prefix) for prefix in prefixes):
             return
 
@@ -41,7 +41,6 @@ class Markov(commands.Cog):
                 _message = _message.replace(key, value)
 
             await markovdb.write(f"{_message}{dot}\n")
-            await markovdb.close()
 
     @commands.command()
     @commands.is_owner()

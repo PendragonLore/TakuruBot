@@ -9,9 +9,6 @@ config.py
 # Test file
 test.py
 
-# Markov's chain logs
-cogs/utils/markov
-
 # Pycharm generated files
 .idea
 
@@ -119,6 +116,5 @@ venv.bak/
 .mypy_cache/
 
 *.DS_Store
-*.png
 markov/
 supervisord.conf

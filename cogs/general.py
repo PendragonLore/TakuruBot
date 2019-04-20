@@ -1,12 +1,16 @@
+import io
+import json
 import sys
 import time
 import typing
-import json
-import io
+import base64
+import binascii
 from datetime import datetime
 
 import discord
 import humanize
+import lxml.etree as etree
+from lru import LRU
 from discord.ext import commands
 
 
@@ -14,6 +18,7 @@ class General(commands.Cog):
     """General use commands."""
 
     def __init__(self):
+        self.mal_cache = LRU(64)
         self.coliru_mapping = {
             'cpp': 'g++ -std=c++1z -O2 -Wall -Wextra -pedantic -pthread main.cpp -lstdc++fs && ./a.out',
             'c': 'mv main.cpp main.c && gcc -std=c11 -O2 -Wall -Wextra -pedantic main.c && ./a.out',
@@ -34,12 +39,12 @@ class General(commands.Cog):
         embed.add_field(name="Avatar URL", value=f"[Click here]({member.avatar_url})")
         embed.add_field(name="Nickname", value=member.nick)
         embed.add_field(name="Created", value=f"{humanize.naturaldate(member.created_at)} "
-                                              f"({humanize.naturaldelta(datetime.utcnow() - member.created_at)} ago)")
+        f"({humanize.naturaldelta(datetime.utcnow() - member.created_at)} ago)")
         embed.add_field(name="Joined", value=f"{humanize.naturaldate(member.joined_at)} "
-                                             f"({humanize.naturaldelta(datetime.utcnow() - member.joined_at)} ago)")
+        f"({humanize.naturaldelta(datetime.utcnow() - member.joined_at)} ago)")
         embed.add_field(name="Status", value=f"Desktop: {member.desktop_status}\n"
-                                             f"Web: {member.web_status}\n"
-                                             f"Mobile: {member.mobile_status}", inline=False)
+        f"Web: {member.web_status}\n"
+        f"Mobile: {member.mobile_status}", inline=False)
         if member.activity:
             activity_type = str(member.activity.type).replace("ActivityType.", "").capitalize()
             embed.add_field(name=activity_type, value=member.activity.name)
@@ -59,23 +64,26 @@ class General(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def avatar_url(self, ctx, mentions: commands.Greedy[discord.Member] = None):
         """Get yours or some mentioned users' profile picture.
-        Limit is 2 per command."""
+        Limit is 3 per command."""
         if not mentions:
             mentions = [ctx.author]
-        for count, member in enumerate(mentions):
+        for member in mentions[:2]:
             a = member.avatar_url_as
+
             png = a(format="png", size=1024)
             jpeg = a(format="jpeg", size=1024)
             webp = a(format="webp", size=1024)
+            if member.is_avatar_animated():
+                gif = a(format="gif", size=1024)
+            else:
+                gif = None
+            desc = f" | [gif]({gif})" if gif else ""
             embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62), title=str(member),
-                                  description=f"[png]({png}) | [jpeg]({jpeg}) | [webp]({webp})")
+                                  description=f"[png]({png}) | [jpeg]({jpeg}) | [webp]({webp})" + desc)
 
             embed.set_image(url=member.avatar_url)
 
             await ctx.send(embed=embed)
-
-            if count >= 2:
-                return
 
     @commands.command(name="ping")
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -87,7 +95,7 @@ class General(commands.Cog):
         end = time.perf_counter()
 
         await message.edit(content=f"Pong! Latency is: {(end - start) * 1000:.2f}ms, "
-                                   f"websocket latency is {ctx.bot.latency * 1000:.2f}ms")
+        f"websocket latency is {ctx.bot.latency * 1000:.2f}ms")
 
     @commands.command(name="about")
     async def about(self, ctx):
@@ -131,7 +139,7 @@ class General(commands.Cog):
                         value=f"`{guild.member_count}/{len(guild.channels)}/{len(guild.emojis)}`")
         embed.add_field(name="Owner", value=guild.owner.mention)
         embed.add_field(name="Created at", value=f"{humanize.naturaldate(guild.created_at)} "
-                                                 f"({humanize.naturaldelta(datetime.utcnow() - guild.created_at)})")
+        f"({humanize.naturaldelta(datetime.utcnow() - guild.created_at)})")
 
         await ctx.send(embed=embed)
 
@@ -149,7 +157,7 @@ class General(commands.Cog):
         embed.description = first_message.content
         embed.add_field(name="\u200b", value=f"[Jump!]({first_message.jump_url})")
         embed.set_footer(text=f"Message is from {humanize.naturaldate(first_message.created_at)} "
-                              f"({humanize.naturaldelta(first_message.created_at - datetime.utcnow())} ago)")
+        f"({humanize.naturaldelta(first_message.created_at - datetime.utcnow())} ago)")
 
         await ctx.send(embed=embed)
 
@@ -211,12 +219,80 @@ class General(commands.Cog):
         """Get a big version of an emoji."""
         fp = io.BytesIO()
         await emoji.url.save(fp)
-        await ctx.send(file=discord.File(fp, filename=f"{emoji.name}.png"))
+        await ctx.send(file=discord.File(fp, filename=f"{emoji.name}{'.png' if not emoji.animated else '.gif'}"))
 
     @commands.command(name="say", aliases=["echo"])
     async def say(self, ctx, *, arg: commands.clean_content):
         """Make the bot repeat what you say."""
         await ctx.send(arg)
+
+    @commands.command(name="parsetoken")
+    async def parse_token(self, ctx, *, token):
+        """Parse a Discord auth token."""
+        t = token.split(".")
+        if len(t) > 3 or len(t) < 3:
+            return await ctx.send("Not a valid token.")
+
+        try:
+            id = base64.standard_b64decode(t[0]).decode("utf-8")
+            try:
+                user = await ctx.bot.fetch_user(int(id))
+            except discord.HTTPException:
+                user = None
+        except binascii.Error:
+            return await ctx.send("Failed to decode user ID.")
+
+        try:
+            TOKEN_EPOCH = 1293840000
+            decoded = int.from_bytes(base64.standard_b64decode(t[1] + "=="), "big")
+            timestamp = datetime.utcfromtimestamp(decoded)
+            if timestamp.year < 2015:
+                timestamp = datetime.utcfromtimestamp(decoded + TOKEN_EPOCH)
+            date = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        except binascii.Error:
+            return await ctx.send("Failed to decode timestamp.")
+
+        fmt = f"**Probably a valid token.**\n\n**ID**: {id}\n" \
+            f"**Created at**: {date}\n**Owner**: {user if user else '*Was not able to fetch it*.'}" \
+            f"\n**Cryptographic component**: {t[2]}"
+
+        await ctx.send(fmt)
+
+    async def get_mal_search(self, ctx, query):
+        cache_check = self.mal_cache.get(query.lower(), None)
+        if cache_check is not None:
+            return cache_check
+
+        html = await ctx.request("GET", "https://myanimelist.net/anime.php", q=query, json=False)
+        nodes = etree.fromstring(html, etree.HTMLParser())
+
+        titles = tuple(title for title in nodes.xpath("//img/@alt")[2:])
+        urls = tuple(url for url in nodes.xpath("//a[@class='hoverinfo_trigger']/@href"))
+        descs = tuple(t for t in nodes.xpath("//div[@class='pt4']/text()"))
+        thumbs = tuple(img for img in nodes.xpath("//img/@data-src"))
+
+        result = tuple(zip(titles, urls, descs, thumbs))
+
+        self.mal_cache[query.lower()] = result
+
+        return result
+
+    @commands.command(name="MAL", aliases=["anime"])
+    async def anime(self, ctx, *, name):
+        """Search for an anime on My Anime List."""
+        results = await self.get_mal_search(ctx, name)
+        embeds = []
+
+        for title, url, desc, thumb in results:
+            embed = discord.Embed(title=title, colour=discord.Colour.from_rgb(54, 57, 62))
+
+            embed.set_thumbnail(url=thumb)
+            embed.add_field(name="Short description", value=desc)
+            embed.add_field(name="URL Link", value=f"[Click here.]({url})")
+
+            embeds.append(embed)
+
+        await ctx.paginate(embeds)
 
 
 def setup(bot):

@@ -7,6 +7,13 @@ import utils
 from utils.emotes import KAZ_HAPPY, ARI_DERP
 
 
+class Prefix(commands.clean_content):
+    async def convert(self, ctx, argument):
+        pre = await super().convert(ctx, argument)
+
+        return pre + " "
+
+
 class Owner(commands.Cog):
     """Owner only commands."""
 
@@ -15,17 +22,6 @@ class Owner(commands.Cog):
             raise commands.NotOwner("You are not my owner.")
 
         return True
-
-    @commands.command(name="blacklist", hidden=True)
-    async def blacklist(self, ctx, users: commands.Greedy[discord.Member]):
-        if not users:
-            return
-
-        for user in users:
-            await ctx.bot.db.execute("INSERT INTO blacklist (user_id) VALUES ($1)", user)
-
-        blacklisted = ", ".join([str(x) for x in users])
-        await ctx.send(f"Blacklisted {blacklisted}.")
 
     @commands.command(hidden=True)
     async def redis(self, ctx, *args):
@@ -43,16 +39,16 @@ class Owner(commands.Cog):
         if query.startswith("```") and query.endswith("```"):
             query = "\n".join(query.split("\n")[1:-1])
 
-        is_multistatement = query.count(";") > 1
-        if is_multistatement:
+        is_not_select = query.count("SELECT") == 0
+        if is_not_select:
             request = ctx.db.execute
         else:
             request = ctx.db.fetch
 
         results = await request(query)
 
-        if is_multistatement:
-            return await ctx.send("Done.")
+        if is_not_select:
+            return await ctx.send(results)
 
         headers = list(results[0].keys())
         table = utils.Tabulator()
@@ -66,6 +62,40 @@ class Owner(commands.Cog):
             return await ctx.send("Too long.", file=discord.File(fp, "table.txt"))
 
         await ctx.send(fmt)
+
+    @commands.group(name="prefix", invoke_without_command=True, case_insensitive=True, hidden=True)
+    async def prefix(self, ctx):
+        return await ctx.send(f"Current prefixes: ``{', '.join(ctx.bot.prefixes)}``")
+
+    @prefix.command(name="add")
+    async def prefix_add(self, ctx, *, prefix: Prefix):
+        if len(prefix) > 32:
+            return await ctx.send("Prefix lenght can be 32 at maximum.")
+
+        if prefix in ctx.bot.prefixes:
+            return await ctx.send("Prefix already present.")
+
+        sql = """INSERT INTO prefixes
+                    (guild_id, prefix)
+                    VALUES 
+                    (1, $1)"""
+        await ctx.db.execute(sql, prefix)
+        ctx.bot.prefixes.append(prefix)
+
+        await ctx.send(f"Added ``{prefix}`` as a prefix.")
+
+    @prefix.command(name="remove")
+    async def prefix_remove(self, ctx, *, prefix: Prefix):
+        if prefix not in ctx.bot.prefixes:
+            return await ctx.send(f"No prefix named {prefix} found.")
+
+        sql = """DELETE
+                  FROM prefixes
+                  WHERE prefix=$1"""
+
+        await ctx.db.execute(sql, prefix)
+        ctx.bot.prefixes.remove(prefix)
+        await ctx.send(f"Removed ``{prefix}`` from prefixes.")
 
 
 def setup(bot):

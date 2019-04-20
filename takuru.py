@@ -1,15 +1,15 @@
 import asyncio
 import logging
 import os
+import pathlib
 import traceback
-from pathlib import Path, PurePath
 from datetime import datetime
 
-import asyncpg
 import aioredis
+import async_pokepy
+import asyncpg
 import wavelink
 from discord.ext import commands
-import async_pokepy
 
 import config
 import utils
@@ -29,7 +29,8 @@ class RightSiderContext(commands.Context):
 
 class TakuruBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or(*config.PREFIXES), **config.bot)
+        self.prefixes = []
+        super().__init__(command_prefix=self.get_custom_prefix, **config.bot)
 
         self.init_time = datetime.utcnow()
 
@@ -38,10 +39,10 @@ class TakuruBot(commands.Bot):
         self.finished_setup = asyncio.Event(loop=self.loop)
 
         self.http_headers = {
-            "User-Agent": f"Python aiohttp"
+            "User-Agent": "Python aiohttp"
         }
 
-        self.init_cogs = [f"cogs.{ext.stem}" for ext in Path("cogs/").glob("*.py")]
+        self.init_cogs = [f"cogs.{ext.stem}" for ext in pathlib.Path("cogs/").glob("*.py")]
 
         self.db = None
         self._redis = None
@@ -56,8 +57,8 @@ class TakuruBot(commands.Bot):
         file_amount = 0
         for path, _, files in os.walk("."):
             for name in files:
-                file_dir = f"./{PurePath(path, name)}"
-                if not name.split(".")[-1] == "py" or "env" in file_dir:
+                file_dir = f"./{pathlib.PurePath(path, name)}"
+                if not name.split(".")[-1] == "py" or "env" in file_dir:  # ignore env folder and not python files.
                     continue
                 file_amount += 1
                 with open(file_dir, "r", encoding="utf-8") as file:
@@ -81,6 +82,12 @@ class TakuruBot(commands.Bot):
 
         return super().dispatch(event_name, *args, **kwargs)
 
+    async def get_custom_prefix(self, bot, message):
+        if not self.prefixes:
+            self.prefixes = [record["prefix"] + " " for record in await bot.db.fetch("SELECT prefix FROM prefixes;")]
+
+        return commands.when_mentioned_or(*self.prefixes)(bot, message)
+
     async def on_ready(self):
         if self.finished_setup.is_set():
             return
@@ -100,7 +107,7 @@ class TakuruBot(commands.Bot):
 
         self.finished_setup.set()
 
-        log.info("Bot successfully booted up.")
+        log.info("Bot succesfully booted up.")
         log.info(f"Total guilds: {len(self.guilds)} users: {len(self.users)}")
 
     async def on_message(self, message):
@@ -120,7 +127,7 @@ class TakuruBot(commands.Bot):
             pass
 
     async def on_guild_join(self, guild):
-        log.info(f"Joined from guild {guild} with {guild.member_count} members, owner: {guild.owner}")
+        log.info(f"Joined guild {guild} with {guild.member_count} members, owner: {guild.owner}")
 
     async def on_guild_remove(self, guild):
         log.info(f"Removed from guild {guild} with {guild.member_count} members, owner: {guild.owner}")
@@ -135,7 +142,7 @@ class TakuruBot(commands.Bot):
         for cog in self.init_cogs:
             try:
                 self.load_extension(cog)
-                log.info(f"Successfully loaded {cog}")
+                log.info(f"Succesfully loaded {cog}")
             except Exception as e:
                 log.critical(f"Failed to load {cog} [{type(e).__name__}{e}]")
                 traceback.print_exc()

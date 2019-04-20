@@ -1,7 +1,8 @@
-import discord
-import random
-import more_itertools
 import asyncio
+import random
+
+import discord
+import more_itertools
 from discord.ext import commands
 
 
@@ -33,7 +34,7 @@ class Memes(commands.Cog):
 
         await asyncio.sleep(3)
 
-        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n"
+        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n" 
                                "==> Searching for a previously deleted formula (in the last month)...")
 
         await asyncio.sleep(2)
@@ -65,6 +66,12 @@ class Memes(commands.Cog):
         quote = random.choice(messages)
         return await ctx.send(f"A certain {quote.author.name} once said: *\"{quote.content}\"* 😔")
 
+    @commands.command(name="funnyjoke")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def joke(self, ctx):
+        await ctx.send((await ctx.request("GET", "https://icanhazdadjoke.com/", json=True,
+                                          headers=(("Accept", "application/json"),)))["joke"])
+
     async def generate_embeds(self, ctx, meme_list):
         embeds = []
 
@@ -85,7 +92,7 @@ class Memes(commands.Cog):
     async def round_search(self, ctx, name):
         sql = """SELECT name
                     FROM memes
-                    WHERE serverid=$1 AND name % $2
+                    WHERE guild_id=$1 AND name % $2
                     ORDER BY similarity(name, $2) DESC, name ASC
                     LIMIT 15;"""
 
@@ -111,7 +118,7 @@ class Memes(commands.Cog):
         """Search and send a meme."""
         sql = """SELECT content
                     FROM memes
-                    WHERE serverid=$1 AND name=$2;"""
+                    WHERE guild_id=$1 AND name=$2;"""
 
         meme = await ctx.db.fetchval(sql, ctx.guild.id, name)
 
@@ -127,8 +134,11 @@ class Memes(commands.Cog):
 
             return await ctx.send(f"Meme not found. Did you mean..\n{results}")
 
-        await ctx.db.execute("UPDATE memes SET count = count + 1 WHERE name = $1 AND serverid = $2;",
-                                  name, ctx.guild.id)
+        update = """UPDATE memes 
+                      SET count = count + 1 
+                      WHERE name = $1 AND guild_id = $2;"""
+
+        await ctx.db.execute(update, name, ctx.guild.id)
 
         await ctx.send(meme)
 
@@ -151,9 +161,9 @@ class Memes(commands.Cog):
             return await ctx.send("The user is still in the guild.")
 
         sql = """UPDATE memes
-                    SET ownerid = $1 
+                    SET owner_id = $1 
                     WHERE name = $2 
-                    AND ServerID = $3;"""
+                    AND guild_id = $3;"""
 
         await ctx.db.execute(sql, ctx.author.id, meme, ctx.guild.id)
 
@@ -166,7 +176,7 @@ class Memes(commands.Cog):
         check_sql = """SELECT name
                             FROM memes 
                             WHERE name = $2 
-                            AND serverid = $1;"""
+                            AND guild_id = $1;"""
 
         check = await ctx.db.fetchval(check_sql, ctx.guild.id, name)
 
@@ -174,7 +184,7 @@ class Memes(commands.Cog):
             return await ctx.send(f"Meme {name} already exists.")
 
         sql = """INSERT INTO memes
-                        (serverid, name, content, ownerid) 
+                        (guild_id, name, content, owner_id) 
                         VALUES 
                         ($1, $2, $3, $4);"""
 
@@ -188,7 +198,7 @@ class Memes(commands.Cog):
         """Get a list of all the guild's memes."""
         sql = """SELECT name
                     FROM memes 
-                    WHERE ServerID=$1
+                    WHERE guild_id=$1
                     ORDER BY name ASC;"""
 
         memes = await ctx.db.fetch(sql, ctx.guild.id)
@@ -214,7 +224,7 @@ class Memes(commands.Cog):
 
         sql = """DELETE
                     FROM memes 
-                    WHERE ServerID=$1 
+                    WHERE guild_id=$1 
                     AND name=$2;"""
 
         await ctx.db.execute(sql, ctx.guild.id, name)
@@ -252,7 +262,7 @@ class Memes(commands.Cog):
 
         sql = """UPDATE memes
                     SET content = $1
-                    WHERE serverid = $2 
+                    WHERE guild_id = $2 
                     AND name = $3;"""
 
         await ctx.db.execute(sql, new_content, ctx.guild.id, name)
@@ -260,9 +270,9 @@ class Memes(commands.Cog):
         await ctx.send(f"Updated content of {name} to {new_content}")
 
     async def owner_check(self, ctx, name):
-        check_sql = """SELECT ownerid
+        check_sql = """SELECT owner_id
                           FROM memes
-                          WHERE serverid = $1
+                          WHERE guild_id = $1
                           AND name = $2;"""
 
         check = await ctx.db.fetchval(check_sql, ctx.guild.id, name)
@@ -275,7 +285,7 @@ class Memes(commands.Cog):
         """Get a meme's info."""
         sql = """SELECT *
                     FROM memes
-                    WHERE serverid = $1
+                    WHERE guild_id = $1
                     AND name = $2;"""
 
         data = dict((await ctx.db.fetchrow(sql, ctx.guild.id, name)))
@@ -306,7 +316,7 @@ class Memes(commands.Cog):
         """Transfer the ownership of a meme, you must own it."""
         check_sql = """SELECT name
                         FROM memes
-                        WHERE name=$1 AND serverid=$2;"""
+                        WHERE name=$1 AND guild_id=$2;"""
 
         another_check = await ctx.db.fetchval(check_sql, name, ctx.guild.id)
 
@@ -322,8 +332,8 @@ class Memes(commands.Cog):
             return await ctx.send(f"You are not the owner of {name}.")
 
         sql = """UPDATE memes
-                    SET ownerid=$1
-                    WHERE name=$2 AND serverid=$3;"""
+                    SET owner_id=$1
+                    WHERE name=$2 AND guild_id=$3;"""
 
         await ctx.db.execute(sql, recipient.id, name, ctx.guild.id)
 

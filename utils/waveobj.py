@@ -245,6 +245,10 @@ class Player(wavelink.Player):
             self.reaction_task.cancel()
         except Exception:
             pass
+        self.updating = False
+        self.update = False
+        self.looping = False
+        self.dj = None
 
     async def invoke_react(self, cmd, ctx):
         if not cmd._buckets.valid:
