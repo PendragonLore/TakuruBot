@@ -293,7 +293,7 @@ class Memes(commands.Cog):
         if not data:
             return await ctx.send("Meme not found.")
 
-        owner = ctx.bot.get_user(data["ownerid"])
+        owner = ctx.bot.get_user(data["owner_id"])
 
         embed = discord.Embed(
             colour=discord.Colour.from_rgb(54, 57, 62),
