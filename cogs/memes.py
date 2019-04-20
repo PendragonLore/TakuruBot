@@ -34,7 +34,7 @@ class Memes(commands.Cog):
 
         await asyncio.sleep(3)
 
-        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n" 
+        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n"
                                "==> Searching for a previously deleted formula (in the last month)...")
 
         await asyncio.sleep(2)
@@ -134,7 +134,7 @@ class Memes(commands.Cog):
 
             return await ctx.send(f"Meme not found. Did you mean..\n{results}")
 
-        update = """UPDATE memes 
+        update = """UPDATE memes
                       SET count = count + 1 
                       WHERE name = $1 AND guild_id = $2;"""
 
