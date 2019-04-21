@@ -1,5 +1,6 @@
 from .emotes import *
-from .waveobj import Track, Player
 from .ezrequests import EasyRequests
-from .helpformatter import TakuruHelpCommand
 from .formats import Paginator, PaginationError, Tabulator
+from .helpformatter import TakuruHelpCommand
+from .waveobj import Track, Player
+from .checks import *

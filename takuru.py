@@ -135,6 +135,7 @@ class TakuruBot(commands.Bot):
     async def close(self):
         await self.ezr.close()
         await self.pokeapi.close()
+        await asyncio.wait_for(await self.db.close(), timeout=20.0)
         await super().close()
 
     def load_init_cogs(self):

@@ -4,8 +4,9 @@ from discord.ext import commands
 class TakuruHelpCommand(commands.HelpCommand):
     def __init__(self):
         super().__init__(command_attrs={
-            "aliases": ["halp", "help"],
-            "hidden": True
+            "aliases": ["halp", "h"],
+            "hidden": True,
+            "cooldown": commands.Cooldown(1, 3, commands.BucketType.user)
         })
 
     def get_command_signature(self, command):

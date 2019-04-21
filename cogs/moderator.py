@@ -3,12 +3,14 @@ import typing
 import discord
 from discord.ext import commands
 
+import utils
+
 
 class Moderator(commands.Cog):
     """Commands for moderation purposes."""
 
     @commands.command(name="purge", aliases=["prune"])
-    @commands.has_permissions(manage_messages=True)
+    @utils.bot_and_author_have_permissions(manage_messages=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def bulk_delete(self, ctx, amount: int, member: typing.Optional[discord.Member] = None):
         """Bulk-delete a certain amout of messages in the current channel."""
@@ -27,7 +29,7 @@ class Moderator(commands.Cog):
         await ctx.send(f"Succesfuly deleted {len(purge)} message(s).")
 
     @commands.command(name="kick")
-    @commands.has_permissions(kick_members=True)
+    @utils.bot_and_author_have_permissions(kick_members=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def kick(self, ctx, *, members: commands.Greedy[discord.Member]):
         """Kick a single or multiple users."""
@@ -49,7 +51,7 @@ class Moderator(commands.Cog):
                        f" (If any members are missing it's because I don't have the necessary permissions)")
 
     @commands.command(name="ban")
-    @commands.has_permissions(ban_members=True)
+    @utils.bot_and_author_have_permissions(ban_members=True)
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def ban(self, ctx, *, members: commands.Greedy[discord.Member]):
         """Ban a single or multiple users."""

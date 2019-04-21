@@ -100,7 +100,7 @@ class General(commands.Cog):
     @commands.command(name="about")
     async def about(self, ctx):
         """Get some basic info about the bot."""
-        python_v = ".".join(str(i) for i in list(sys.version_info[0:3]))
+        python_v = ".".join(map(str, list(sys.version_info[0:3])))
         invite = discord.utils.oauth_url(ctx.bot.user.id, permissions=discord.Permissions(37055814))
         total, files = ctx.bot.python_lines
         owner = ctx.bot.get_user(ctx.bot.owner_id)
