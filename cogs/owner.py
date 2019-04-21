@@ -40,12 +40,13 @@ class Owner(commands.Cog):
             query = "\n".join(query.split("\n")[1:-1])
 
         is_not_select = query.count("SELECT") == 0
-        if is_not_select:
-            request = ctx.db.execute
-        else:
-            request = ctx.db.fetch
+        async with ctx.db.acquire() as db:
+            if is_not_select:
+                request = db.execute
+            else:
+                request = db.fetch
 
-        results = await request(query)
+            results = await request(query)
 
         if is_not_select:
             return await ctx.send(results)
@@ -75,11 +76,14 @@ class Owner(commands.Cog):
         if prefix in ctx.bot.prefixes:
             return await ctx.send("Prefix already present.")
 
-        sql = """INSERT INTO prefixes
-                    (guild_id, prefix)
-                    VALUES 
-                    (1, $1)"""
-        await ctx.db.execute(sql, prefix)
+        async with ctx.db.acquire() as db:
+            sql = """INSERT INTO prefixes
+                        (guild_id, prefix)
+                        VALUES 
+                        (1, $1)"""
+
+            await db.execute(sql, prefix)
+
         ctx.bot.prefixes.append(prefix)
 
         await ctx.send(f"Added ``{prefix}`` as a prefix.")
@@ -89,11 +93,13 @@ class Owner(commands.Cog):
         if prefix not in ctx.bot.prefixes:
             return await ctx.send(f"No prefix named {prefix} found.")
 
-        sql = """DELETE
-                  FROM prefixes
-                  WHERE prefix=$1"""
+        async with ctx.db.acquire() as db:
+            sql = """DELETE
+                      FROM prefixes
+                      WHERE prefix=$1"""
 
-        await ctx.db.execute(sql, prefix)
+            await db.execute(sql, prefix)
+
         ctx.bot.prefixes.remove(prefix)
         await ctx.send(f"Removed ``{prefix}`` from prefixes.")
 

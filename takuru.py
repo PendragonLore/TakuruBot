@@ -94,11 +94,12 @@ class TakuruBot(commands.Bot):
 
         self._redis = await asyncio.wait_for(
             aioredis.create_redis_pool("redis://localhost", password=self.config.REDIS,
-                                       maxsize=10, minsize=5), timeout=20.0
+                                       maxsize=10, minsize=5, loop=self.loop),
+            timeout=20.0, loop=self.loop
         )
 
         log.info("Connected to Redis")
-        self.db = await asyncpg.create_pool(**config.db)
+        self.db = await asyncpg.create_pool(**config.db, loop=self.loop)
         log.info("Connected to Postgres")
 
         self.pokeapi = await async_pokepy.Client.connect(loop=self.loop)
@@ -135,7 +136,7 @@ class TakuruBot(commands.Bot):
     async def close(self):
         await self.ezr.close()
         await self.pokeapi.close()
-        await asyncio.wait_for(self.db.close(), timeout=20.0)
+        await asyncio.wait_for(self.db.close(), timeout=20.0, loop=self.loop)
         await super().close()
 
     def load_init_cogs(self):
