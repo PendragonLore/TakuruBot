@@ -108,7 +108,7 @@ class TakuruBot(commands.Bot):
 
         self.finished_setup.set()
 
-        log.info("Bot succesfully booted up.")
+        log.info("Bot successfully booted up.")
         log.info(f"Total guilds: {len(self.guilds)} users: {len(self.users)}")
 
     async def on_message(self, message):
@@ -144,7 +144,7 @@ class TakuruBot(commands.Bot):
         for cog in self.init_cogs:
             try:
                 self.load_extension(cog)
-                log.info(f"Succesfully loaded {cog}")
+                log.info(f"Successfully loaded {cog}")
             except Exception as e:
                 log.critical(f"Failed to load {cog} [{type(e).__name__}{e}]")
                 traceback.print_exc()

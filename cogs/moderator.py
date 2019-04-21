@@ -26,7 +26,7 @@ class Moderator(commands.Cog):
         except discord.HTTPException:
             pass
 
-        await ctx.send(f"Succesfuly deleted {len(purge)} message(s).")
+        await ctx.send(f"Successfully deleted {len(purge)} message(s).")
 
     @commands.command(name="kick")
     @utils.bot_and_author_have_permissions(kick_members=True)
