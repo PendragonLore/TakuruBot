@@ -34,7 +34,7 @@ class Memes(commands.Cog):
 
         await asyncio.sleep(3)
 
-        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n" 
+        await msg.edit(content=f"**Error**: No available formula with the name \"{package}\"\n"
                                "==> Searching for a previously deleted formula (in the last month)...")
 
         await asyncio.sleep(2)
