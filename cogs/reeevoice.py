@@ -6,9 +6,9 @@ import random
 import re
 
 import discord
+from discord.ext import commands
 import humanize
 import wavelink
-from discord.ext import commands
 
 from utils import Track, Player
 
@@ -55,8 +55,8 @@ class Music(commands.Cog):
         if ctx.author.id == player.dj.id:
             return True
 
-        ch = ctx.channel
-        permissions = ch.permissions_for(ctx.author)
+        channel = ctx.channel
+        permissions = channel.permissions_for(ctx.author)
 
         missing = [perm for perm, value in perms.items() if getattr(permissions, perm, None) != value]
 

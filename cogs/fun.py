@@ -4,8 +4,8 @@ from io import BytesIO
 from typing import Optional
 
 import discord
-from PIL import ImageDraw, Image, ImageFont
 from discord.ext import commands
+from PIL import ImageDraw, Image, ImageFont
 from jishaku.functools import executor_function
 
 
@@ -14,12 +14,12 @@ class FunStuff(commands.Cog, name="Fun"):
 
     @executor_function
     def circle_func(self, avatar_bytes, colour):
-        with Image.open(avatar_bytes) as im:
-            with Image.new("RGBA", im.size, colour) as background:
-                with Image.new("L", im.size, 0) as mask:
+        with Image.open(avatar_bytes) as img:
+            with Image.new("RGBA", img.size, colour) as background:
+                with Image.new("L", img.size, 0) as mask:
                     mask_draw = ImageDraw.Draw(mask)
-                    mask_draw.ellipse([(0, 0), im.size], fill=255)
-                    background.paste(im, (0, 0), mask=mask)
+                    mask_draw.ellipse([(0, 0), img.size], fill=255)
+                    background.paste(img, (0, 0), mask=mask)
 
                 final_buffer = BytesIO()
 
@@ -34,8 +34,8 @@ class FunStuff(commands.Cog, name="Fun"):
         text = textwrap.wrap(text, width=width)
         ret = BytesIO()
 
-        with Image.open(image) as im:
-            draw = ImageDraw.Draw(im)
+        with Image.open(image) as img:
+            draw = ImageDraw.Draw(img)
             font = ImageFont.truetype(font, font_size)
 
             x = coordinates[0]
@@ -45,7 +45,7 @@ class FunStuff(commands.Cog, name="Fun"):
                 draw.text((x, y), t, font=font, fill=text_color)
                 y += height
 
-            im.save(ret, "png")
+            img.save(ret, "png")
 
         ret.seek(0)
 
@@ -71,13 +71,13 @@ class FunStuff(commands.Cog, name="Fun"):
 
     @executor_function
     def merge(self, img, img2):
-        with Image.open(img) as im:
-            im = im.convert("RGBA")
-            with Image.open(img2) as im2:
-                im2 = im2.convert("RGBA")
+        with Image.open(img) as img:
+            img = img.convert("RGBA")
+            with Image.open(img2) as img2:
+                img2 = img2.convert("RGBA")
                 ret = BytesIO()
-                im.alpha_composite(im2.resize((83, 83)), dest=(31, 33))
-                im.save(ret, "png")
+                img.alpha_composite(img2.resize((83, 83)), dest=(31, 33))
+                img.save(ret, "png")
 
         ret.seek(0)
 
@@ -94,10 +94,10 @@ class FunStuff(commands.Cog, name="Fun"):
         embeds = []
 
         for dog in dogs["message"]:
-            e = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
-            e.set_image(url=dog)
+            embed = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
+            embed.set_image(url=dog)
 
-            embeds.append(e)
+            embeds.append(embed)
 
         await ctx.paginate(embeds)
 
@@ -114,10 +114,10 @@ class FunStuff(commands.Cog, name="Fun"):
         embeds = []
 
         for cat in cats:
-            e = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
-            e.set_image(url=cat["url"])
+            embed = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
+            embed.set_image(url=cat["url"])
 
-            embeds.append(e)
+            embeds.append(embed)
 
         await ctx.paginate(embeds)
 
@@ -131,12 +131,12 @@ class FunStuff(commands.Cog, name="Fun"):
                    "┬──┬ ノ( ͡° ل͜ ͡°ノ)", "( ͡° ▽ ͡°)爻( ͡° ل͜ ͡° ☆)"]
         await ctx.send(random.choice(lennies))
 
-    # TODO add more responses
     @commands.command(name="8ball")
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def eight_ball(self, ctx):
         """\"I guess I'll have to answer your dumb questions.\""""
-        await ctx.send(f"**{ctx.message.author.name}** | {random.choice(['no'])}")
+        possible_responses = ["No.", "Fuck off.", "Maybe.", "Dumb.", "Yes.", "Idk.", "lmao", "Meh."]
+        await ctx.send(f"**{ctx.message.author.name}** | {random.choice(possible_responses)}")
 
     @commands.command(name="circle")
     async def circle(self, ctx, color: Optional[str] = None):
@@ -199,10 +199,10 @@ class FunStuff(commands.Cog, name="Fun"):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def yt_comment(self, ctx, *, text):
         """Make you comment on YouTube."""
-        foo = BytesIO()
-        await ctx.author.avatar_url_as(format="png", size=1024).save(foo)
+        orig = BytesIO()
+        await ctx.author.avatar_url_as(format="png", size=1024).save(orig)
 
-        avatar = await self.circle_func(foo, (0, 0, 0, 0))
+        avatar = await self.circle_func(orig, (0, 0, 0, 0))
         no_author = await self.draw_text_on_img(text, 85, "assets/images/yt.png", "assets/fonts/roboto.ttf",
                                                 (145, 80), 27, text_color=(255, 255, 255))
         with_author = await self.draw_text_on_img(ctx.author.name, 100, no_author, "assets/fonts/roboto_bold.ttf",

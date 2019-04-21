@@ -4,8 +4,8 @@ import itertools
 from typing import Union
 
 import discord
-import wavelink
 from discord.ext import commands
+import wavelink
 
 from utils import emotes
 
@@ -146,7 +146,7 @@ class Player(wavelink.Player):
                         f"`[{self.format_delta(sum([t.duration for t in self.entries]))}]`")
         embed.add_field(name="Volume", value=f"**`{self.volume}%`**")
 
-        if len(self.entries) > 0:
+        if self.entries:
             data = "\n".join(
                 f"**-** `{t.title[0:45]}{'...' if len(t.title) > 45 else ''}`"
                 for t in itertools.islice([e for e in self.entries if not e.is_dead], 0, 3, None)
@@ -190,11 +190,11 @@ class Player(wavelink.Player):
         def check(r, u):
             if not self.controller_message:
                 return False
-            elif str(r) not in self.controls.keys():
+            if str(r) not in self.controls.keys():
                 return False
-            elif u.id == self.bot.user.id or r.message.id != self.controller_message.id:
+            if u.id == self.bot.user.id or r.message.id != self.controller_message.id:
                 return False
-            elif u not in self.bot.get_channel(int(self.channel_id)).members:
+            if u not in self.bot.get_channel(int(self.channel_id)).members:
                 return False
             return True
 
@@ -254,7 +254,7 @@ class Player(wavelink.Player):
         if not cmd._buckets.valid:
             return True
 
-        if not (await cmd.can_run(ctx)):
+        if not await cmd.can_run(ctx):
             return False
 
         bucket = cmd._buckets.get_bucket(ctx)

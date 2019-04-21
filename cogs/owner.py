@@ -28,9 +28,9 @@ class Owner(commands.Cog):
         try:
             ret = await ctx.bot.redis(*args)
             await ctx.send(getattr(ret, "decode", ret.__str__)())
-        except Exception as e:
+        except Exception as exc:
             await ctx.message.add_reaction(ARI_DERP)
-            raise e
+            raise exc
         else:
             await ctx.message.add_reaction(KAZ_HAPPY)
 

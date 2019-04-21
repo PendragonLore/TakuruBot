@@ -30,7 +30,7 @@ class Paginator:
         ]
 
     async def setup(self):
-        if len(self.entries) == 0:
+        if not self.entries:
             raise PaginationError("No entries.")
 
         if self.embed is False:

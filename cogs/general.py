@@ -8,10 +8,10 @@ import binascii
 from datetime import datetime
 
 import discord
+from discord.ext import commands
 import humanize
 import lxml.etree as etree
 from lru import LRU
-from discord.ext import commands
 
 
 class General(commands.Cog):
@@ -39,12 +39,12 @@ class General(commands.Cog):
         embed.add_field(name="Avatar URL", value=f"[Click here]({member.avatar_url})")
         embed.add_field(name="Nickname", value=member.nick)
         embed.add_field(name="Created", value=f"{humanize.naturaldate(member.created_at)} "
-        f"({humanize.naturaldelta(datetime.utcnow() - member.created_at)} ago)")
+                                              f"({humanize.naturaldelta(datetime.utcnow() - member.created_at)} ago)")
         embed.add_field(name="Joined", value=f"{humanize.naturaldate(member.joined_at)} "
-        f"({humanize.naturaldelta(datetime.utcnow() - member.joined_at)} ago)")
+                                             f"({humanize.naturaldelta(datetime.utcnow() - member.joined_at)} ago)")
         embed.add_field(name="Status", value=f"Desktop: {member.desktop_status}\n"
-        f"Web: {member.web_status}\n"
-        f"Mobile: {member.mobile_status}", inline=False)
+                                             f"Web: {member.web_status}\n"
+                                             f"Mobile: {member.mobile_status}", inline=False)
         if member.activity:
             activity_type = str(member.activity.type).replace("ActivityType.", "").capitalize()
             embed.add_field(name=activity_type, value=member.activity.name)
@@ -89,13 +89,12 @@ class General(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def ping(self, ctx):
         """It's like pings but pongs without pings."""
-
         start = time.perf_counter()
         message = await ctx.send("Ping...")
         end = time.perf_counter()
 
         await message.edit(content=f"Pong! Latency is: {(end - start) * 1000:.2f}ms, "
-        f"websocket latency is {ctx.bot.latency * 1000:.2f}ms")
+                                   f"websocket latency is {ctx.bot.latency * 1000:.2f}ms")
 
     @commands.command(name="about")
     async def about(self, ctx):
@@ -139,7 +138,7 @@ class General(commands.Cog):
                         value=f"`{guild.member_count}/{len(guild.channels)}/{len(guild.emojis)}`")
         embed.add_field(name="Owner", value=guild.owner.mention)
         embed.add_field(name="Created at", value=f"{humanize.naturaldate(guild.created_at)} "
-        f"({humanize.naturaldelta(datetime.utcnow() - guild.created_at)})")
+                                                 f"({humanize.naturaldelta(datetime.utcnow() - guild.created_at)})")
 
         await ctx.send(embed=embed)
 
@@ -151,13 +150,13 @@ class General(commands.Cog):
             channel = ctx.channel
 
         first_message = (await channel.history(limit=1, oldest_first=True).flatten())[0]
+        ago = humanize.naturaldelta(first_message.created_at - datetime.utcnow())
 
         embed = discord.Embed(title=f"#{channel}'s first message")
         embed.set_author(name=str(first_message.author), icon_url=first_message.author.avatar_url)
         embed.description = first_message.content
         embed.add_field(name="\u200b", value=f"[Jump!]({first_message.jump_url})")
-        embed.set_footer(text=f"Message is from {humanize.naturaldate(first_message.created_at)} "
-        f"({humanize.naturaldelta(first_message.created_at - datetime.utcnow())} ago)")
+        embed.set_footer(text=f"Message is from {humanize.naturaldate(first_message.created_at)} ({ago} ago)")
 
         await ctx.send(embed=embed)
 
@@ -243,11 +242,11 @@ class General(commands.Cog):
             return await ctx.send("Failed to decode user ID.")
 
         try:
-            TOKEN_EPOCH = 1293840000
+            token_epoch = 1293840000
             decoded = int.from_bytes(base64.standard_b64decode(t[1] + "=="), "big")
             timestamp = datetime.utcfromtimestamp(decoded)
-            if timestamp.year < 2015:
-                timestamp = datetime.utcfromtimestamp(decoded + TOKEN_EPOCH)
+            if timestamp.year < 2015:  # Usually if the year is less then 2015 it means that we must add the token epoch
+                timestamp = datetime.utcfromtimestamp(decoded + token_epoch)
             date = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         except binascii.Error:
             return await ctx.send("Failed to decode timestamp.")

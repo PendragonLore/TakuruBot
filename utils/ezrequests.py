@@ -1,4 +1,5 @@
 import asyncio
+
 import aiohttp
 
 
@@ -32,6 +33,7 @@ class InternalServerError(WebException):
 class EasyRequests:
     def __init__(self, bot, session):
         self.bot = bot
+        self.loop = bot.loop
         self.session = session
 
     @classmethod
@@ -70,8 +72,8 @@ class EasyRequests:
                     raise Forbidden(r)
                 if r.status == 404:
                     raise NotFound(r)
-                else:
-                    raise WebException(r)
+
+                raise WebException(r)
 
         raise WebException(r)
 

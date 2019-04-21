@@ -1,11 +1,11 @@
 from datetime import datetime
 
 import async_cse
-import discord
-import youtube_dl
 import async_pokepy
-import lxml.etree as etree
+import discord
 import humanize
+import lxml.etree as etree
+import youtube_dl
 from discord.ext import commands
 from jishaku.functools import executor_function
 
@@ -252,7 +252,8 @@ class Web(commands.Cog):
         fmt_types = " and ".join(pokemon.types)
 
         embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
-        embed.description = f"**Type(s)** {fmt_types} | **Weight**: {pokemon.weight / 10} kg | **Height**: {pokemon.height * 10} cm"
+        embed.description = f"**Type(s)** {fmt_types} | **Weight**: {pokemon.weight / 10} kg | " \
+                            f"**Height**: {pokemon.height * 10} cm"
         embed.set_author(name=f"{pokemon.id} - {pokemon}",
                          icon_url="http://cdn.marketplaceimages.windowsphone.com/v8/images/"
                                   "757b4a77-b530-4997-822f-f03decfaa6b6?imageType=ws_icon_medium")
@@ -314,7 +315,7 @@ class Web(commands.Cog):
             if image_link:
                 embed.set_image(url=d["post_link"])
             elif not d["post_link"] == d["url"] and not d["provider_url"] == "https://www.youtube.com/" and not d[
-                "text_content"]:
+                    "text_content"]:
                 embed.add_field(name="Post link", value=d["post_link"])
 
             if d["media"] and d["provider_url"] == "https://www.youtube.com/":
@@ -374,7 +375,7 @@ class Web(commands.Cog):
         joined_at = datetime.strptime(d["join_date"], "%Y-%m-%d %H:%M:%S")
 
         embed.add_field(name="Jointed at", value=f"{humanize.naturaldate(joined_at)}"
-        f" ({humanize.naturaldelta(joined_at - datetime.utcnow())} ago)")
+                                                 f" ({humanize.naturaldelta(joined_at - datetime.utcnow())} ago)")
         if d["events"]:
             text = []
             for event in d["events"]:

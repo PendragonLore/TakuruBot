@@ -63,7 +63,7 @@ class TakuruBot(commands.Bot):
                 file_amount += 1
                 with open(file_dir, "r", encoding="utf-8") as file:
                     for line in file:
-                        if not line.strip().startswith("#") or len(line.strip()) == 0:
+                        if not line.strip().startswith("#") or not line.strip():
                             total += 1
 
         return total, file_amount
@@ -84,7 +84,8 @@ class TakuruBot(commands.Bot):
 
     async def get_custom_prefix(self, bot, message):
         if not self.prefixes:
-            self.prefixes = [record["prefix"] + " " for record in await bot.db.fetch("SELECT prefix FROM prefixes;")]
+            async with bot.db.acquire() as db:
+                self.prefixes = [f"{record['prefix']} " for record in await db.fetch("SELECT prefix FROM prefixes;")]
 
         return commands.when_mentioned_or(*self.prefixes)(bot, message)
 
@@ -98,18 +99,18 @@ class TakuruBot(commands.Bot):
             timeout=20.0, loop=self.loop
         )
 
-        log.info("Connected to Redis")
+        LOG.info("Connected to Redis")
         self.db = await asyncpg.create_pool(**config.db, loop=self.loop)
-        log.info("Connected to Postgres")
+        LOG.info("Connected to Postgres")
 
         self.pokeapi = await async_pokepy.Client.connect(loop=self.loop)
         self.ezr = await utils.EasyRequests.start(bot)
-        log.info("Finished setting up API stuff")
+        LOG.info("Finished setting up API stuff")
 
         self.finished_setup.set()
 
-        log.info("Bot successfully booted up.")
-        log.info(f"Total guilds: {len(self.guilds)} users: {len(self.users)}")
+        LOG.info("Bot successfully booted up.")
+        LOG.info("Total guilds: %d users: %d", len(self.guilds), len(self.users))
 
     async def on_message(self, message):
         if message.author.bot:
@@ -121,32 +122,34 @@ class TakuruBot(commands.Bot):
         await self.invoke(ctx)
 
     async def on_command(self, ctx):
-        try:
-            log.info(f"{ctx.message.author} ran command {ctx.command.name} "
-                     f"in {ctx.guild.name} in #{ctx.channel.name}")
-        except AttributeError:
-            pass
+        if ctx.guild is not None:
+            LOG.info("%s ran command %s in %s in #%s", str(ctx.message.author), ctx.command.qualified_name,
+                     str(ctx.guild), str(ctx.channel))
 
     async def on_guild_join(self, guild):
-        log.info(f"Joined guild {guild} with {guild.member_count} members, owner: {guild.owner}")
+        LOG.info("Joined guild %s with %d members, owner: %s", str(guild), guild.member_count, str(guild.owner))
 
     async def on_guild_remove(self, guild):
-        log.info(f"Removed from guild {guild} with {guild.member_count} members, owner: {guild.owner}")
+        LOG.info("Removed from guild %s with %d members, owner: %s", str(guild), guild.member_count, str(guild.owner))
 
     async def close(self):
+        self.finished_setup.clear()
+
         await self.ezr.close()
         await self.pokeapi.close()
         await asyncio.wait_for(self.db.close(), timeout=20.0, loop=self.loop)
+        self._redis.close()
+        await self._redis.wait_closed()
         await super().close()
 
     def load_init_cogs(self):
-        log.info("Loading cogs...")
+        LOG.info("Loading cogs...")
         for cog in self.init_cogs:
             try:
                 self.load_extension(cog)
-                log.info(f"Successfully loaded {cog}")
-            except Exception as e:
-                log.critical(f"Failed to load {cog} [{type(e).__name__}{e}]")
+                LOG.info("Successfully loaded %s", cog)
+            except Exception as exc:
+                LOG.critical("Failed to load %s [%s: %s]", cog, type(exc).__name__, str(exc))
                 traceback.print_exc()
 
     async def redis(self, *args, **kwargs):
@@ -157,8 +160,8 @@ class TakuruBot(commands.Bot):
 
 
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("takuru")
-log.setLevel(logging.INFO)
+LOG = logging.getLogger("takuru")
+LOG.setLevel(logging.INFO)
 
 bot = TakuruBot()
 
@@ -166,12 +169,12 @@ handler = logging.FileHandler(filename=f"pokecom/takuru {bot.init_time.strftime(
                               encoding="utf-8",
                               mode="w")
 handler.setFormatter(logging.Formatter("[%(asctime)s:%(levelname)s]%(name)s %(message)s"))
-log.addHandler(handler)
+LOG.addHandler(handler)
 
 try:
     bot.loop.run_until_complete(bot.start(config.TAKURU_TOKEN))
 except KeyboardInterrupt:
     bot.loop.run_until_complete(bot.close())
 finally:
-    log.info("Logged out")
+    LOG.info("Logged out")
     print("Logged out")
