@@ -130,8 +130,6 @@ class Memes(commands.Cog):
             if not results:
                 return await ctx.send("Meme not found.")
 
-            results.sort()
-
             results = "\n".join(results)
 
             return await ctx.send(f"Meme not found. Did you mean..\n{results}")
