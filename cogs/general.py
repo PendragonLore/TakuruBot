@@ -5,6 +5,7 @@ import time
 import typing
 import base64
 import binascii
+import re
 from datetime import datetime
 
 import discord
@@ -16,6 +17,8 @@ from lru import LRU
 
 class General(commands.Cog):
     """General use commands."""
+
+    TOKEN_REGEX = re.compile(r"[a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9_\-]{27}|mfa\.[a-zA-Z0-9_\-]{84}")
 
     def __init__(self):
         self.mal_cache = LRU(64)
@@ -167,7 +170,7 @@ class General(commands.Cog):
         if not query:
             return await ctx.send("https://github.com/Rapptz/discord.py")
 
-        source = await ctx.request("GET", "https://rtfs.eviee.host/dpy/v1", search=query, limit=10)
+        source = await ctx.request("GET", "https://rtfs.eviee.host/dpy/v1", search=query, limit=12)
         thing = []
 
         for result in source["results"]:
@@ -228,6 +231,9 @@ class General(commands.Cog):
     @commands.command(name="parsetoken")
     async def parse_token(self, ctx, *, token):
         """Parse a Discord auth token."""
+        if not self.TOKEN_REGEX.match(token):
+            return await ctx.send("Not a valid token.")
+
         t = token.split(".")
         if len(t) > 3 or len(t) < 3:
             return await ctx.send("Not a valid token.")
@@ -251,7 +257,7 @@ class General(commands.Cog):
         except binascii.Error:
             return await ctx.send("Failed to decode timestamp.")
 
-        fmt = f"**Probably a valid token.**\n\n**ID**: {id}\n" \
+        fmt = f"**Valid token.**\n\n**ID**: {id}\n" \
             f"**Created at**: {date}\n**Owner**: {user if user else '*Was not able to fetch it*.'}" \
             f"\n**Cryptographic component**: {t[2]}"
 

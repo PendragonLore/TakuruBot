@@ -8,6 +8,8 @@ from discord.ext import commands
 from PIL import ImageDraw, Image, ImageFont
 from jishaku.functools import executor_function
 
+from utils.emotes import POPULAR
+
 
 class FunStuff(commands.Cog, name="Fun"):
     """Fun stuff, I think."""
@@ -212,6 +214,21 @@ class FunStuff(commands.Cog, name="Fun"):
         file = discord.File(fin, filename="yt.png")
 
         await ctx.send(file=file)
+
+    @commands.command(name="mock")
+    async def mock(self, ctx, *, text: commands.clean_content):
+        """Mock text."""
+        mocked = "".join(random.choice([m.upper(), m.lower()]) for m in text)
+
+        await ctx.send(f"{POPULAR} *{mocked}* {POPULAR}")
+
+    @commands.command(name="clap")
+    async def clap(self, ctx, *, text: commands.clean_content):
+        """:clap:"""
+        clap = "\U0001f44f"
+        clapped = clap.join(text.split())
+
+        await ctx.send(f"{clap}{clapped}{clap}")
 
 
 def setup(bot):
