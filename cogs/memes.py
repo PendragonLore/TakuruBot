@@ -111,7 +111,7 @@ class Memes(commands.Cog):
 
         if not meme:
             return await ctx.send_help("meme")
-        
+
         await ctx.invoke(self.meme_send, name=meme)
 
     @meme.command(name="get", aliases=["send"])
@@ -227,12 +227,11 @@ class Memes(commands.Cog):
                         FROM memes 
                         WHERE guild_id = $1 
                         AND name = $2
-                        AND owner_id = $3
-                        RETURNING name;"""
+                        AND owner_id = $3;"""
 
             deleted = await db.execute(sql, ctx.guild.id, name, ctx.author.id)
 
-        if not deleted:
+        if deleted[-1] == "0":
             return await ctx.send("Couldn't delete meme. You either are not the owner of it or it was not found.")
 
         await ctx.send(f"Successfully deleted meme {name}.")

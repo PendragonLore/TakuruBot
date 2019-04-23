@@ -7,8 +7,10 @@ CREATE TABLE IF NOT EXISTS memes
   count    INT           NOT NULL DEFAULT 0
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS memes_guild_id_name_uindex ON memes (guild_id, name);
+
 CREATE TABLE IF NOT EXISTS prefixes
 (
   guild_id BIGINT      NOT NULL,
-  prefix   VARCHAR(32) NOT NULL
+  prefix   VARCHAR(32) NOT NULL UNIQUE
 );
