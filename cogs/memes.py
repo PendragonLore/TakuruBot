@@ -286,7 +286,8 @@ class Memes(commands.Cog):
 
         embed = discord.Embed(
             colour=discord.Colour.from_rgb(54, 57, 62),
-            title="Meme info"
+            title="Meme info",
+            timestamp=data["created_at"]
         )
 
         embed.set_author(icon_url=owner.avatar_url, name=str(owner))
@@ -295,7 +296,7 @@ class Memes(commands.Cog):
         embed.add_field(name="Owner", value=owner.mention)
         embed.add_field(name="Number of uses", value=str(data["count"]))
 
-        embed.set_footer(icon_url=ctx.author.avatar_url, text="TEXT")
+        embed.set_footer(icon_url=ctx.author.avatar_url, text="Created at")
 
         await ctx.send(embed=embed)
 
