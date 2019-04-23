@@ -1,5 +1,6 @@
 import random
 import re
+import typing
 
 import aiofiles  # Using aiofiles because I'm way too lazy to rewrite this for DB integration.
 from discord.ext import commands
@@ -25,7 +26,8 @@ class Markov(commands.Cog):
             return
         if not message.content or message.guild.id not in self.bot.config.markov_guilds:
             return
-        prefixes = [".", "f?", "h?", "!", "mh!", ";", "=", "--", "%", "t!", "m!", "mt!"]
+        prefixes = [".", "f?", "h?", "!", ";", "=", "--", "%"]
+        prefixes.extend(self.bot.prefixes)
         if any(message.content.lower().startswith(prefix) for prefix in prefixes):
             return
 
@@ -43,25 +45,12 @@ class Markov(commands.Cog):
             await markovdb.write(f"{_message}{dot}\n")
 
     @commands.command()
-    @commands.is_owner()
-    async def test_log(self, ctx):
-        """An owner only test markov chain."""
-
-        randomized_int = random.randint(1, 602)
-
-        t_path = f"markov/markov ({randomized_int}).txt"
-        async with aiofiles.open(t_path) as file:
-            word_dictionary = self.learn(await file.read())
-            await ctx.send(word_dictionary)
-
-    @commands.command()
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def mlog(self, ctx, *message_to_log):
+    async def mlog(self, ctx, *, message: typing.Optional[str]):
         """Respond to a message with a Markov chain.
         The chain is composed out of 602 txt files."""
 
-        if message_to_log:
-            message = " ".join(message_to_log)
+        if message:
             randomized_int = random.randint(1, 602)
 
             async with aiofiles.open(f"markov/markov ({randomized_int}).txt", "a+") as markovdb:
@@ -80,36 +69,36 @@ class Markov(commands.Cog):
 
         async with aiofiles.open(path) as file:
             word_dictionary = self.learn(await file.read())
-            punctuation = False
-            last_word = "~~~~~~~~~~~~~~~~"
-            counter = 0
 
-            while not punctuation:
-                new_word = self.get_next_word(last_word, word_dictionary).rstrip()
-                result = result + " " + new_word
-                result.replace("\n", "")
-                last_word = new_word
+        last_word = "~~~~~~~~~~~~~~~~"
+        counter = 0
 
-                if len(result.split(" ")) > random.randint(3, 8) and any(
-                        punct in result[-2:] for punct in self.punctuation):
-                    punctuation = True
+        while True:
+            new_word = self.get_next_word(last_word, word_dictionary).rstrip()
+            result = result + " " + new_word
+            result.replace("\n", "")
+            last_word = new_word
 
-                counter += 1
+            if len(result.split(" ")) > random.randint(3, 8) and any(
+                    punct in result[-2:] for punct in self.punctuation):
+                break
 
-                if counter >= 40:
-                    return await ctx.send("No punct found.")
+            counter += 1
 
-        result = " ".join(result.split())
-        result = result[0].upper() + result[1:]
-        await ctx.send(result)
+            if counter >= 40:
+                return await ctx.send("No punct found.")
+
+        split = re.sub(" +", " ", result)
+        fin = split[1].upper() + split[2:]
+        return await ctx.send(fin)
 
     def learn(self, _input):
         _dict = {}
-        word_tokens = re.split(" |\n", _input)
+        word_tokens = re.split("[ \n]", _input)
 
-        for i in range(0, len(word_tokens) - 1):
+        for i in range(0, len(word_tokens)-1):
             current_word = word_tokens[i]
-            next_word = word_tokens[i + 1]
+            next_word = word_tokens[i+1]
 
             if current_word not in _dict:
                 _dict[current_word] = {next_word: 1}
@@ -140,8 +129,7 @@ class Markov(commands.Cog):
         return candidates_normalised[rnd]
 
     def pick_random(self, _dict):
-        random_num = random.randint(0, len(_dict) - 1)
-        new_word = list(_dict.keys())[random_num]
+        new_word = random.choice(list(_dict.keys()))
         return new_word
 
     @mlog.error

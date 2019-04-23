@@ -1,6 +1,7 @@
 import asyncio
 import random
 
+import asyncpg
 import discord
 from discord.ext import commands
 import more_itertools
@@ -119,8 +120,9 @@ class Memes(commands.Cog):
         """Search and send a meme."""
         async with ctx.db.acquire() as db:
             sql = """SELECT content
-                    FROM memes
-                    WHERE guild_id=$1 AND name=$2;"""
+                        FROM memes
+                        WHERE guild_id = $1 
+                        AND name = $2;"""
 
             meme = await db.fetchval(sql, ctx.guild.id, name)
 
@@ -148,18 +150,27 @@ class Memes(commands.Cog):
     async def meme_claim(self, ctx, *, meme: MemeName):
         """Get the ownership of a meme.
         The original owner must be out of the guild."""
-        check = await self.owner_check(ctx, meme)
+        async with ctx.db.acquire() as db:
+            sql = """SELECT owner_id
+                        FROM memes
+                        WHERE name = $1
+                        AND guild_id = $2"""
+
+            check = await db.fetchval(sql, meme, ctx.guild.id)
 
         if check is None:
             return await ctx.send("Meme not found.")
 
         if check == ctx.author.id:
-            return await ctx.send("You already own that meme.")
+            return await ctx.send(f"You already own {meme}.")
 
-        member = discord.utils.get(ctx.guild.members, id=check)
+        if not ctx.guild.chunked:
+            await ctx.bot.request_offline_members(ctx.guild)
 
-        if member:
-            return await ctx.send("The user is still in the guild.")
+        member = ctx.guild.get_member(check)
+
+        if member is not None:
+            return await ctx.send("The owner is still in the guild.")
 
         async with ctx.db.acquire() as db:
             sql = """UPDATE memes
@@ -169,30 +180,22 @@ class Memes(commands.Cog):
 
             await db.execute(sql, ctx.author.id, meme, ctx.guild.id)
 
-        await ctx.send("You are now the owner of that meme.")
+        await ctx.send(f"You are now the owner of {meme}.")
 
     @meme.command(name="add")
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_add(self, ctx, name: MemeName, *, content: commands.clean_content):
-        """Adds a meme."""
-        async with ctx.db.acquire() as db:
-            check_sql = """SELECT name
-                                FROM memes 
-                                WHERE name = $2 
-                                AND guild_id = $1;"""
-
-            check = await db.fetchval(check_sql, ctx.guild.id, name)
-
-        if check is not None:
-            return await ctx.send(f"Meme {name} already exists.")
-
+        """Add a meme."""
         async with ctx.db.acquire() as db:
             sql = """INSERT INTO memes
                             (guild_id, name, content, owner_id) 
                             VALUES 
                             ($1, $2, $3, $4);"""
 
-            await db.execute(sql, ctx.guild.id, name, content, ctx.author.id)
+            try:
+                await db.execute(sql, ctx.guild.id, name, content, ctx.author.id)
+            except asyncpg.UniqueViolationError:
+                return await ctx.send(f"Meme {name} already exists.")
 
         await ctx.send(f"Successfully added meme {name}.")
 
@@ -219,33 +222,26 @@ class Memes(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_remove(self, ctx, *, name: MemeName):
         """Delete a meme, you must own it."""
-        check = await self.owner_check(ctx, name)
-
-        if check is None:
-            return await ctx.send("Meme not found.")
-
-        if check != ctx.author.id:
-            return await ctx.send("You are not the meme's owner.")
-
         async with ctx.db.acquire() as db:
             sql = """DELETE
                         FROM memes 
-                        WHERE guild_id=$1 
-                        AND name=$2;"""
+                        WHERE guild_id = $1 
+                        AND name = $2
+                        AND owner_id = $3
+                        RETURNING name;"""
 
-            await db.execute(sql, ctx.guild.id, name)
+            deleted = await db.execute(sql, ctx.guild.id, name, ctx.author.id)
+
+        if not deleted:
+            return await ctx.send("Couldn't delete meme. You either are not the owner of it or it was not found.")
 
         await ctx.send(f"Successfully deleted meme {name}.")
 
     @meme.command(name="search")
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_search(self, ctx, *, name: MemeName):
-        """Searches for a meme.
-        The query must be at least 3 characters."""
+        """Search for a meme."""
         results = await self.round_search(ctx, name)
-
-        if len(name) < 3:
-            return await ctx.send("The query must be at least 3 characters.")
 
         if not results:
             return await ctx.send("Search returned nothing.")
@@ -258,21 +254,17 @@ class Memes(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_edit(self, ctx, name: MemeName, *, new_content: commands.clean_content):
         """Edit a meme's content, you must own it."""
-        check = await self.owner_check(ctx, name)
-
-        if check is None:
-            return await ctx.send("Meme not found.")
-
-        if check != ctx.author.id:
-            return await ctx.send("You are not the meme's owner.")
-
         async with ctx.db.acquire() as db:
             sql = """UPDATE memes
                         SET content = $1
                         WHERE guild_id = $2 
-                        AND name = $3;"""
+                        AND name = $3
+                        AND owner_id = $4;"""
 
-            await db.execute(sql, new_content, ctx.guild.id, name)
+            edited = await db.execute(sql, new_content, ctx.guild.id, name, ctx.author.id)
+
+        if edited[-1] == "0":
+            return await ctx.send("Could not edit meme, it either doesn't exist or you don't own it.")
 
         await ctx.send(f"Updated content of {name} to {new_content}")
 
@@ -323,23 +315,20 @@ class Memes(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def transfer_ownership(self, ctx, name: MemeName, recipient: discord.Member):
         """Transfer the ownership of a meme, you must own it."""
-        async with ctx.db.acquire() as db:
-            check_sql = """SELECT name
-                            FROM memes
-                            WHERE name=$1 AND guild_id=$2;"""
-
-            another_check = await db.fetchval(check_sql, name, ctx.guild.id)
-
-        if not another_check:
-            return await ctx.send(f"No meme named {name} found.")
-
         if recipient.id == ctx.author.id:
             return await ctx.send(f"You already own {name}.")
 
-        check = await self.owner_check(ctx, name)
+        async with ctx.db.acquire() as db:
+            check_sql = """SELECT owner_id
+                              FROM memes
+                              WHERE guild_id = $1
+                              AND name = $2
+                              AND owner_id = $3;"""
 
-        if not check == ctx.author.id:
-            return await ctx.send(f"You are not the owner of {name}.")
+            check = await db.fetchrow(check_sql, ctx.guild.id, name, ctx.author.id)
+
+        if check is None:
+            return await ctx.send(f"You are not the owner of {name} or it doesn't exist.")
 
         async with ctx.db.acquire() as db:
             sql = """UPDATE memes

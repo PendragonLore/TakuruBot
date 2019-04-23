@@ -1,89 +1,20 @@
-import textwrap
 import random
-from io import BytesIO
 from typing import Optional
 
 import discord
-from discord.ext import commands
-from PIL import ImageDraw, Image, ImageFont
-from jishaku.functools import executor_function
+from discord.ext import commands, flags
 
 from utils.emotes import POPULAR
+from utils.image import *
+
+
+class Author(flags.ParamDefault):
+    async def default(self, ctx):
+        return ctx.author
 
 
 class FunStuff(commands.Cog, name="Fun"):
     """Fun stuff, I think."""
-
-    @executor_function
-    def circle_func(self, avatar_bytes, colour):
-        with Image.open(avatar_bytes) as img:
-            with Image.new("RGBA", img.size, colour) as background:
-                with Image.new("L", img.size, 0) as mask:
-                    mask_draw = ImageDraw.Draw(mask)
-                    mask_draw.ellipse([(0, 0), img.size], fill=255)
-                    background.paste(img, (0, 0), mask=mask)
-
-                final_buffer = BytesIO()
-
-                background.save(final_buffer, "png")
-
-        final_buffer.seek(0)
-
-        return final_buffer
-
-    @executor_function
-    def draw_text_on_img(self, text, width, image, font, coordinates, font_size=40, text_color=(0, 0, 0)):
-        text = textwrap.wrap(text, width=width)
-        ret = BytesIO()
-
-        with Image.open(image) as img:
-            draw = ImageDraw.Draw(img)
-            font = ImageFont.truetype(font, font_size)
-
-            x = coordinates[0]
-            y = coordinates[1]
-            for t in text:
-                width, height = font.getsize(t)
-                draw.text((x, y), t, font=font, fill=text_color)
-                y += height
-
-            img.save(ret, "png")
-
-        ret.seek(0)
-
-        return ret
-
-    @executor_function
-    def gayify_func(self, user_avatar, alpha):
-        ret = BytesIO()
-
-        with Image.open(user_avatar) as background:
-            background = background.resize((926, 926)).convert("RGBA")
-
-            with Image.open("assets/images/gay.png") as flag:
-                flag.putalpha(alpha)
-
-                gay = Image.alpha_composite(background, flag)
-
-                gay.save(ret, "png")
-
-        ret.seek(0)
-
-        return ret
-
-    @executor_function
-    def merge(self, img, img2):
-        with Image.open(img) as img:
-            img = img.convert("RGBA")
-            with Image.open(img2) as img2:
-                img2 = img2.convert("RGBA")
-                ret = BytesIO()
-                img.alpha_composite(img2.resize((83, 83)), dest=(31, 33))
-                img.save(ret, "png")
-
-        ret.seek(0)
-
-        return ret
 
     @commands.command(name="dog", aliases=["dogs", "doggos", "doggo"])
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -142,7 +73,7 @@ class FunStuff(commands.Cog, name="Fun"):
 
     @commands.command(name="circle")
     async def circle(self, ctx, color: Optional[str] = None):
-        """Make your profile picture oval.
+        """Make your profile picture a circle.
         You can also provide a color which must be formatted like this \"RED,GREEN,BLUE,ALPHA\".
         Each value must be a number between 0 and 255."""
         if not color:
@@ -152,9 +83,8 @@ class FunStuff(commands.Cog, name="Fun"):
             if len(color) > 4:
                 return await ctx.send("Not a valid color.")
 
-        avatar = BytesIO()
-        await ctx.author.avatar_url_as(format="png", size=1024).save(avatar)
-        final_buffer = await self.circle_func(avatar, color)
+        avatar = await get_avatar(ctx.author)
+        final_buffer = await circle_func(avatar, color)
 
         file = discord.File(filename="circle.png", fp=final_buffer)
 
@@ -165,23 +95,20 @@ class FunStuff(commands.Cog, name="Fun"):
     async def trump_meme(self, ctx, *, text):
         """Donald trump memes are still relevant right????"""
         await ctx.trigger_typing()
-        image = await self.draw_text_on_img(text, 55, "assets/images/trump.png", "assets/fonts/roboto.ttf", (50, 160))
+        image = await draw_text_on_img(text, 55, "assets/images/trump.png", "assets/fonts/roboto.ttf", (50, 160))
 
         file = discord.File(filename="trump.png", fp=image)
 
         await ctx.send(file=file)
 
-    @commands.command(name="gay", aliases=["gayify"])
-    async def gayify(self, ctx, member: Optional[discord.Member] = None):
+    @commands.command(name="gay", aliases=["gayify"], cls=flags.FlagCommand)
+    async def gayify(self, ctx, member: discord.Member = Author):
         """Gayify someone or yourself."""
         await ctx.trigger_typing()
-        if not member:
-            member = ctx.author
 
-        avatar = BytesIO()
-        await member.avatar_url_as(format="png", size=1024).save(avatar)
+        avatar = await get_avatar(member)
 
-        image = await self.gayify_func(avatar, 128)
+        image = await gayify_func(avatar, 128)
         file = discord.File(image, filename="gay.png")
 
         await ctx.send(file=file)
@@ -201,16 +128,16 @@ class FunStuff(commands.Cog, name="Fun"):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def yt_comment(self, ctx, *, text):
         """Make you comment on YouTube."""
-        orig = BytesIO()
-        await ctx.author.avatar_url_as(format="png", size=1024).save(orig)
+        await ctx.trigger_typing()
+        avatar = await get_avatar(ctx.author)
 
-        avatar = await self.circle_func(orig, (0, 0, 0, 0))
-        no_author = await self.draw_text_on_img(text, 85, "assets/images/yt.png", "assets/fonts/roboto.ttf",
-                                                (145, 80), 27, text_color=(255, 255, 255))
-        with_author = await self.draw_text_on_img(ctx.author.name, 100, no_author, "assets/fonts/roboto_bold.ttf",
-                                                  (145, 32), 28, text_color=(255, 255, 255))
+        circled = await circle_func(avatar, (0, 0, 0, 0))
+        no_author = await draw_text_on_img(text, 85, "assets/images/yt.png", "assets/fonts/roboto.ttf",
+                                           (145, 80), 27, text_color=(255, 255, 255))
+        with_author = await draw_text_on_img(ctx.author.name, 100, no_author, "assets/fonts/roboto_bold.ttf",
+                                             (145, 32), 28, text_color=(255, 255, 255))
 
-        fin = await self.merge(with_author, avatar)
+        fin = await merge(with_author, circled)
         file = discord.File(fin, filename="yt.png")
 
         await ctx.send(file=file)
@@ -230,6 +157,35 @@ class FunStuff(commands.Cog, name="Fun"):
 
         await ctx.send(f"{clap}{clapped}{clap}")
 
+    @commands.command(name="deepfry", cls=flags.FlagCommand)
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def deep_fry(self, ctx, flags: flags.FlagParser(membe = discord.Member, amount = float) = flags.EmptyFlags):
+        """Deepfry yours or someone else's profile picture."""
+        await ctx.trigger_typing()
+        avatar = await get_avatar(flags["member"] or ctx.author)
+
+        deepfried = await enhance(avatar, "color", flags["amount"] or 10)
+        await ctx.send(file=discord.File(deepfried, filename="fried.jpeg"))
+
+    @commands.command(name="sharpen", cls=flags.FlagCommand)
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def sharp(self, ctx, *, flags: flags.FlagParser(member = discord.Member, amount = float) = flags.EmptyFlags):
+        """Sharpen yours or someone else's profile picture."""
+        await ctx.trigger_typing()
+        avatar = await get_avatar(flags["member"] or ctx.author)
+
+        deepfried = await enhance(avatar, "sharpness", flags["amount"] or 50, fmt="PNG", quality=None)
+        await ctx.send(file=discord.File(deepfried, filename="sharp.png"))
+
+    @commands.command(name="brighten", cls=flags.FlagCommand)
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def bright(self, ctx, *, flags: flags.FlagParser(member = discord.Member, amount = float) = flags.EmptyFlags):
+        """Brighten yours or someone else's profile picture."""
+        await ctx.trigger_typing()
+        avatar = await get_avatar(flags["member"] or ctx.author)
+
+        deepfried = await enhance(avatar, "brightness", flags["amount"] or 2, fmt="PNG", quality=None)
+        await ctx.send(file=discord.File(deepfried, filename="bright.png"))
 
 def setup(bot):
     bot.add_cog(FunStuff())

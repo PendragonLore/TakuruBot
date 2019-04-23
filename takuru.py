@@ -10,9 +10,12 @@ import async_pokepy
 import asyncpg
 import wavelink
 from discord.ext import commands
+import uvloop
 
 import config
 import utils
+
+uvloop.install()
 
 
 class RightSiderContext(commands.Context):
