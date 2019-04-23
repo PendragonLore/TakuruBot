@@ -29,7 +29,7 @@ class Memes(commands.Cog):
     """EPIC M E M E Z"""
 
     @commands.command(name="install")
-    async def install_(self, ctx, *, package: str):
+    async def install_(self, ctx, *, package: commands.clean_content):
         """Install a package from homebrew."""
         msg = await ctx.send("Updating homebrew...")
 
@@ -111,7 +111,7 @@ class Memes(commands.Cog):
 
         if not meme:
             return await ctx.send_help("meme")
-
+        
         await ctx.invoke(self.meme_send, name=meme)
 
     @meme.command(name="get", aliases=["send"])
@@ -267,17 +267,6 @@ class Memes(commands.Cog):
             return await ctx.send("Could not edit meme, it either doesn't exist or you don't own it.")
 
         await ctx.send(f"Updated content of {name} to {new_content}")
-
-    async def owner_check(self, ctx, name):
-        async with ctx.db.acquire() as db:
-            check_sql = """SELECT owner_id
-                              FROM memes
-                              WHERE guild_id = $1
-                              AND name = $2;"""
-
-            check = await db.fetchval(check_sql, ctx.guild.id, name)
-
-        return check
 
     @meme.command(name="info")
     @commands.cooldown(1, 3, commands.BucketType.user)
