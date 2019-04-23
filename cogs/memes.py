@@ -10,15 +10,15 @@ import more_itertools
 class MemeName(commands.clean_content):
     async def convert(self, ctx, argument):
         converted = await super().convert(ctx, argument)
-        lower = converted.lower().strip()
+        stripped = converted.strip()
 
-        if not lower:
-            raise commands.BadArgument("Name is a required argument that is missing")
+        if not stripped:
+            raise commands.BadArgument("Meme name missing.")
 
-        if len(lower) > 128:
+        if len(stripped) > 128:
             raise commands.BadArgument("Meme name can be up to 128 characters.")
 
-        fw, _, _ = lower.partition(" ")
+        fw, _, _ = stripped.partition(" ")
         if fw in ctx.bot.get_command("meme").all_commands:
             raise commands.BadArgument("This meme name starts with a reserved word.")
 
