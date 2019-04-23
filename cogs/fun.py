@@ -174,8 +174,8 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.trigger_typing()
         avatar = await get_avatar(flags["member"] or ctx.author)
 
-        deepfried = await enhance(avatar, "sharpness", flags["amount"] or 50, fmt="PNG", quality=None)
-        await ctx.send(file=discord.File(deepfried, filename="sharp.png"))
+        sharp = await enhance(avatar, "sharpness", flags["amount"] or 50, fmt="PNG", quality=None)
+        await ctx.send(file=discord.File(sharp, filename="sharp.png"))
 
     @commands.command(name="brighten", cls=flags.FlagCommand)
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -184,8 +184,9 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.trigger_typing()
         avatar = await get_avatar(flags["member"] or ctx.author)
 
-        deepfried = await enhance(avatar, "brightness", flags["amount"] or 2, fmt="PNG", quality=None)
-        await ctx.send(file=discord.File(deepfried, filename="bright.png"))
+        bright = await enhance(avatar, "brightness", flags["amount"] or 2, fmt="PNG", quality=None)
+        await ctx.send(file=discord.File(bright, filename="bright.png"))
+
 
 def setup(bot):
     bot.add_cog(FunStuff())
