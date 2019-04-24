@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS memes
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS memes_guild_id_name_uindex ON memes (guild_id, name);
+CREATE INDEX IF NOT EXISTS meme_name_trgm_idx ON memes USING GIN (name gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS prefixes
 (

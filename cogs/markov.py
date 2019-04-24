@@ -22,12 +22,14 @@ class Markov(commands.Cog):
         await self.markovlogging(message)
 
     async def markovlogging(self, message):
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            return
         if message.author.bot:
             return
         if not message.content or message.guild.id not in self.bot.config.markov_guilds:
             return
-        prefixes = [".", "f?", "h?", "!", ";", "=", "--", "%"]
-        prefixes.extend(self.bot.prefixes)
+        prefixes = [".", "f?", "h?", "!", ";", "=", "--", "%", "?"]
         if any(message.content.lower().startswith(prefix) for prefix in prefixes):
             return
 

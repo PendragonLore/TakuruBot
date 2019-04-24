@@ -104,20 +104,7 @@ class Memes(commands.Cog):
 
         return results
 
-    @commands.group(name="meme", invoke_without_command=True, case_insensitive=True)
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme(self, ctx, *, meme: MemeName = None):
-        """Memes related functions, all persistent and guild-locked."""
-
-        if not meme:
-            return await ctx.send_help("meme")
-
-        await ctx.invoke(self.meme_send, name=meme)
-
-    @meme.command(name="get", aliases=["send"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_send(self, ctx, *, name: MemeName):
-        """Search and send a meme."""
+    async def get_meme(self, ctx, name, *, raw=False):
         async with ctx.db.acquire() as db:
             sql = """SELECT content
                         FROM memes
@@ -143,7 +130,31 @@ class Memes(commands.Cog):
 
             await db.execute(update, name, ctx.guild.id)
 
+        if raw:
+            meme = await commands.clean_content(use_nicknames=False, escape_markdown=True).convert(ctx, meme)
+
         await ctx.send(meme)
+
+    @commands.group(name="meme", invoke_without_command=True, case_insensitive=True)
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def meme(self, ctx, *, meme: MemeName = None):
+        """Memes related functions, all persistent and guild-locked."""
+        if not meme:
+            return await ctx.send_help("meme")
+
+        await ctx.invoke(self.meme_send, name=meme)
+
+    @meme.command(name="get", aliases=["send"])
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def meme_send(self, ctx, *, name: MemeName):
+        """Search and send a meme."""
+        await self.get_meme(ctx, name, raw=False)
+
+    @meme.command(name="raw")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def meme_raw(self, ctx, *, name: MemeName):
+        """Get the raw content of a meme."""
+        await self.get_meme(ctx, name, raw=True)
 
     @meme.command(name="claim")
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -239,7 +250,11 @@ class Memes(commands.Cog):
     @meme.command(name="search")
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def meme_search(self, ctx, *, name: MemeName):
-        """Search for a meme."""
+        """Search for a meme.
+        The query must be at least 3 characters."""
+        if len(name) < 3:
+            return await ctx.send("Query must be at least 3 characters.")
+
         results = await self.round_search(ctx, name)
 
         if not results:
@@ -299,6 +314,27 @@ class Memes(commands.Cog):
         embed.set_footer(icon_url=ctx.author.avatar_url, text="Created at")
 
         await ctx.send(embed=embed)
+
+    @meme.command(name="memes")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def meme_memes(self, ctx, member: discord.Member = None):
+        """Get all of yours or another member's memes."""
+        member = member or ctx.author
+        async with ctx.db.acquire() as db:
+            sql = """SELECT name
+                        FROM memes
+                        WHERE owner_id = $1
+                        AND guild_id = $2
+                        ORDER BY name ASC;"""
+
+            results = await db.fetch(sql, member.id, ctx.guild.id)
+
+        if not results:
+            return await ctx.send(f"{member} has no memes.")
+
+        memes_list = [f"{index}. {meme['name']}" for index, meme in enumerate(results, 1)]
+
+        await self.generate_embeds(ctx, memes_list)
 
     @meme.command(name="transfer")
     @commands.cooldown(1, 3, commands.BucketType.user)
