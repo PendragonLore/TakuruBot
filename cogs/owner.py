@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 import utils
-from utils.emotes import KAZ_HAPPY, ARI_DERP
+from utils.emotes import KAZ_HAPPY, ARI_DERP, FESTIVE
 
 
 class Prefix(commands.clean_content):
@@ -102,6 +102,18 @@ class Owner(commands.Cog):
 
         ctx.bot.prefixes.remove(prefix)
         await ctx.send(f"Removed ``{prefix}`` from prefixes.")
+
+    @commands.command(name="blacklist", hidden=True)
+    async def blacklist(self, ctx, thing: str, id_: int):
+        s = getattr(ctx.bot, f"blacklisted_{thing}s")
+        if id_ not in s:
+            s.add(id_)
+            await ctx.bot.redis("SADD", f"blacklisted_{thing}s", str(id_))
+            await ctx.message.add_reaction(FESTIVE)
+        else:
+            s.remove(id_)
+            await ctx.bot.redis("SREM", f"blacklister_{thing}s", str(id_))
+            await ctx.message.add_reaction(KAZ_HAPPY)
 
 
 def setup(bot):

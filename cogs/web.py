@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 
 import async_cse
 import async_pokepy
@@ -51,13 +52,13 @@ class Web(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def giphy(self, ctx, *, gif):
         """Search 5 GIFs on Giphy"""
-
         await ctx.trigger_typing()
         to_send = []
 
         data = (
             await ctx.request("GET", "https://api.giphy.com/v1/gifs/search", q=gif, api_key=ctx.bot.config.GIPHY_KEY,
-                              limit=5))["data"]
+                              limit=5)
+        )["data"]
 
         for entry in data:
             url = entry["images"]["original"]["url"]
@@ -72,7 +73,6 @@ class Web(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def tenor(self, ctx, *, gif):
         """Search 5 GIFs on Tenor"""
-
         await ctx.trigger_typing()
 
         to_send = []
@@ -123,7 +123,6 @@ class Web(commands.Cog):
     @commands.cooldown(1, 3, commands.cooldowns.BucketType.user)
     async def yt_search(self, ctx, *, video):
         """Get the first video of a youtube search."""
-
         @executor_function
         def get_data():
             return self.ytdl.extract_info(url=f"ytsearch:{video}", download=False)
@@ -155,24 +154,21 @@ class Web(commands.Cog):
 
     async def get_search(self, ctx, query, is_image=False):
         await ctx.trigger_typing()
+        is_safe = True if not ctx.channel.is_nsfw() else False
 
-        keys = ctx.bot.config.google_custom_search_api_keys
-
-        for index, key in enumerate(keys, 1):
+        try:
+            result = await self.bot.google.search(query=query, image_search=is_image, safesearch=is_safe)
+        except async_cse.NoMoreRequests:
             try:
-                client = async_cse.Search(api_key=key)
+                self.bot.google = async_cse.Search(api_key=next(self.bot.google_api_keys))
+                result = await self.bot.google.search(query=query, image_search=is_image, safesearch=is_safe)
+            except (async_cse.NoMoreRequests, StopIteration):
+                raise NoMoreAPIKeys()
 
-                is_safe = True if not ctx.channel.is_nsfw() else False
-
-                result = (await client.search(query=query, image_search=is_image, safesearch=is_safe))[0]
-                await client.close()
-                return result
-            except async_cse.NoResults:
-                return await ctx.send("The query returned nothing.")
-            except async_cse.NoMoreRequests:
-                if len(keys) != index:
-                    continue
-                raise NoMoreAPIKeys("No more API keys to use")
+        try:
+            return random.choice(result[:5])
+        except IndexError:
+            raise commands.BadArgument("No results.")
 
     @google.command(name="search", aliases=["s"])
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -223,9 +219,8 @@ class Web(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def hastebin(self, ctx, ext="", *, content):
-        """Post code on hastebin, code blocks *should* be escaped.
-        If you don't want to provide an extension to use just put '""' as the first argument."""
+    async def hastebin(self, ctx, *, content):
+        """Post code on hastebin, code blocks *should* be escaped."""
         try:
             await ctx.message.delete()
         except discord.HTTPException:
@@ -236,8 +231,6 @@ class Web(commands.Cog):
         haste = await ctx.request("POST", "https://hastebin.com/documents", data=content)
         key = haste["key"]
         url = f"https://hastebin.com/{key}"
-        if ext:
-            url += f".{ext}"
 
         await ctx.send(url)
 
@@ -246,8 +239,8 @@ class Web(commands.Cog):
     async def pokemon(self, ctx, *, name):
         try:
             pokemon = await ctx.bot.pokeapi.get_pokemon(name)
-        except async_pokepy.PokemonException:
-            return await ctx.send("Search returned nothing.")
+        except async_pokepy.PokeAPIException:
+            return await ctx.send("No results.")
 
         fmt_types = " and ".join(pokemon.types)
 
@@ -271,93 +264,26 @@ class Web(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="reddit", aliases=["rs", "redditsearch"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def reddit_search(self, ctx, *, query):
-        """Search for a post on Reddit."""
+    @commands.command(name="pkmove", aliases=["pokemove"])
+    async def pokemon_move(self, ctx, *, move):
+        try:
+            move: async_pokepy.Move = await ctx.bot.pokeapi.get_move(move)
+        except async_pokepy.PokeAPIException:
+            return await ctx.send("No results.")
 
-        await ctx.trigger_typing()
+        embed = discord.Embed(color=discord.Colour.from_rgb(54, 57, 62))
+        embed.set_author(name=f"{move.id} - {move}",
+                         icon_url="http://cdn.marketplaceimages.windowsphone.com/v8/images/"
+                                  "757b4a77-b530-4997-822f-f03decfaa6b6?imageType=ws_icon_medium")
+        embed.description = f"""**Description:** {', '.join(move.short_effect)}
+                                **Damage:** {move.power}
+                                **Damage Type:** {move.damage_class}
+                                **Target:** {move.target}
+                                **Elemental Type:** {move.type}
+                                **Power Points:** {move.pp}
+                                {f'**Effect Chance**: {move.effect_chance}%' if move.effect_chance else ''}"""
 
-        request = await ctx.request("GET", "https://www.reddit.com/search.json", q=query, limit=5)
-
-        data = await self.extract_data(request)
-        embeds = []
-        for d in data:
-            if d["nsfw"] and not ctx.channel.is_nsfw():
-                continue
-
-            image_link = d["post_link"].lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".gifv"))
-
-            embed = discord.Embed(
-                title=d["title"][:253] + "..." if len(d["title"]) > 256 else d["title"],
-                url=d["url"],
-                colour=discord.Colour.from_rgb(54, 57, 62),
-            )
-
-            if d["thumbnail"] not in ("self", "default") and not d["media"] and not image_link:
-                embed.set_thumbnail(url=d["thumbnail"])
-
-            embed.add_field(name=d["subreddit"], value=f"u/{d['author']}")
-
-            if d["flair"]:
-                embed.set_footer(text=d["flair"],
-                                 icon_url=self.logo_url)
-            else:
-                embed.set_footer(icon_url=self.logo_url,
-                                 text=f"No flair")
-
-            if d["text_content"]:
-                embed.add_field(name="Text", value=d["text_content"])
-
-            if d["is_video"]:
-                embed.add_field(name="This post is a video.", value="Visit the post to watch it.")
-
-            if image_link:
-                embed.set_image(url=d["post_link"])
-            elif not d["post_link"] == d["url"] and not d["provider_url"] == "https://www.youtube.com/" and not d[
-                    "text_content"]:
-                embed.add_field(name="Post link", value=d["post_link"])
-
-            if d["media"] and d["provider_url"] == "https://www.youtube.com/":
-                embed.add_field(name="Youtube video", value=d["media"]["title"], inline=False)
-                embed.add_field(name="URL Link", value=f"[Click here]({d['post_link']})")
-                embed.add_field(name="Uploader", value=d["media"]["author_name"])
-                embed.set_image(url=d["media"]["thumbnail_url"])
-
-            embeds.append(embed)
-
-        await ctx.paginate(embeds)
-
-    @staticmethod
-    async def extract_data(request):
-        d = []
-        for r in request["data"]["children"]:
-            dict_data = {}
-            data = r["data"]
-            dict_data["title"] = data["title"]
-            dict_data["txt"] = data["selftext"]
-            try:
-                dict_data["text_content"] = data["selftext"][:1020] + "..." if len(data["selftext"]) > 1024 else data[
-                    "selftext"]
-            except KeyError:
-                dict_data["text_content"] = None
-            dict_data["subreddit"] = data["subreddit_name_prefixed"]
-            dict_data["nsfw"] = data["over_18"]
-            dict_data["author"] = data["author"]
-            dict_data["flair"] = data["link_flair_text"]
-            dict_data["thumbnail"] = data["thumbnail"]
-            dict_data["url"] = "https://www.reddit.com/" + data["permalink"]
-            dict_data["post_link"] = data["url"]
-            dict_data["is_video"] = data["is_video"]
-            try:
-                dict_data["media"] = data["media"]["oembed"]
-                dict_data["provider_url"] = dict_data["media"]["provider_url"]
-            except (KeyError, TypeError):
-                dict_data["media"] = None
-                dict_data["provider_url"] = None
-            d.append(dict_data)
-
-        return d
+        await ctx.send(embed=embed)
 
     @commands.command(name="osu")
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -372,6 +298,7 @@ class Web(commands.Cog):
         embed.add_field(name="Total/Ranked", value=f"`{d['total_score']}/{d['ranked_score']}`")
         embed.add_field(name="Total seconds played", value=d["total_seconds_played"])
         embed.add_field(name="Country", value=d["country"])
+        embed.set_thumbnail(url=f"https://a.ppy.sh/{d['user_id']}")
         joined_at = datetime.strptime(d["join_date"], "%Y-%m-%d %H:%M:%S")
 
         embed.add_field(name="Jointed at", value=f"{humanize.naturaldate(joined_at)}"

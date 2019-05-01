@@ -7,6 +7,7 @@ import base64
 import binascii
 import re
 from datetime import datetime
+from urllib.parse import quote as urlquote
 
 import discord
 from discord.ext import commands
@@ -33,26 +34,27 @@ class General(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def userinfo(self, ctx, member: typing.Optional[discord.Member] = None):
         """Get yours or a mentioned user's information."""
-        if not member:
-            member = ctx.author
+        member = member or ctx.author
 
         embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62))
         embed.set_author(name=f"{member} - {member.id}")
         embed.set_thumbnail(url=member.avatar_url)
         embed.add_field(name="Avatar URL", value=f"[Click here]({member.avatar_url})")
-        embed.add_field(name="Nickname", value=member.nick)
+        if member.nick:
+            embed.add_field(name="Nickname", value=member.nick)
+        embed.add_field(name="Is bot?", value=member.bot)
         embed.add_field(name="Created", value=f"{humanize.naturaldate(member.created_at)} "
                                               f"({humanize.naturaldelta(datetime.utcnow() - member.created_at)} ago)")
         embed.add_field(name="Joined", value=f"{humanize.naturaldate(member.joined_at)} "
                                              f"({humanize.naturaldelta(datetime.utcnow() - member.joined_at)} ago)")
-        embed.add_field(name="Status", value=f"Desktop: {member.desktop_status}\n"
-                                             f"Web: {member.web_status}\n"
-                                             f"Mobile: {member.mobile_status}", inline=False)
+        embed.add_field(name="Status", value=f"""Desktop: {member.desktop_status}
+                                             Web: {member.web_status}
+                                             Mobile: {member.mobile_status})""")
         if member.activity:
-            activity_type = str(member.activity.type).replace("ActivityType.", "").capitalize()
+            activity_type = member.activity.type.name.capitalize()
             embed.add_field(name=activity_type, value=member.activity.name)
         if member.roles[1:]:
-            roles = ", ".join(role.mention for role in member.roles[1:20])
+            roles = ", ".join(role.mention for role in reversed(member.roles[1:20]))
             embed.add_field(name="Roles", value=f"{roles}{'...' if len(member.roles) > 20 else ''}")
 
         await ctx.send(embed=embed)
@@ -65,28 +67,24 @@ class General(commands.Cog):
 
     @commands.command(name="avatar", aliases=["av", "pfp"])
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def avatar_url(self, ctx, mentions: commands.Greedy[discord.Member] = None):
-        """Get yours or some mentioned users' profile picture.
-        Limit is 3 per command."""
-        if not mentions:
-            mentions = [ctx.author]
-        for member in mentions[:2]:
-            a = member.avatar_url_as
+    async def avatar_url(self, ctx, member: typing.Optional[discord.Member] = None):
+        """Get yours or some mentioned users' profile picture."""
+        member = member or ctx.author
+        a = member.avatar_url_as
 
-            png = a(format="png", size=1024)
-            jpeg = a(format="jpeg", size=1024)
-            webp = a(format="webp", size=1024)
-            if member.is_avatar_animated():
-                gif = a(format="gif", size=1024)
-            else:
-                gif = None
-            desc = f" | [gif]({gif})" if gif else ""
-            embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62), title=str(member),
-                                  description=f"[png]({png}) | [jpeg]({jpeg}) | [webp]({webp})" + desc)
+        png = a(format="png", size=1024)
+        jpeg = a(format="jpeg", size=1024)
+        webp = a(format="webp", size=1024)
 
-            embed.set_image(url=member.avatar_url)
+        gif = a(format="gif", size=1024) if member.is_avatar_animated() else None
 
-            await ctx.send(embed=embed)
+        embed = discord.Embed(colour=discord.Colour.from_rgb(54, 57, 62), title=str(member),
+                              description=f"[png]({png}) | [jpeg]({jpeg}) | [webp]({webp}) "
+                                          f"{f'| [gif]({gif})' if gif else ''} ")
+
+        embed.set_image(url=member.avatar_url)
+
+        await ctx.send(embed=embed)
 
     @commands.command(name="ping")
     @commands.cooldown(1, 3, commands.BucketType.user)
@@ -188,7 +186,7 @@ class General(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def coliru(self, ctx, *, code):
         """Run code on coliru.
-        Supports, and probably will only ever support, c++ and python 3.5.x
+        Supports, and probably will only ever support, c, c++ and python 3.5.x
         You need to include a codeblock which denotes the language.
         Do not abuse this kthx."""
         if not code.startswith("```") or not code.endswith("```"):
@@ -298,6 +296,28 @@ class General(commands.Cog):
             embeds.append(embed)
 
         await ctx.paginate(embeds)
+
+    @commands.command(name="apm")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def apm(self, ctx, *, query):
+        try:
+            auth = (("Authorization", ctx.bot.config.ATOM_KEY),)
+            package = await ctx.request("GET", f"https://atom.io/api/packages/"
+                                        f"{urlquote('-'.join(query.lower().split()), safe='')}",
+                                        json=True, headers=auth)
+        except Exception as exc:
+            raise commands.BadArgument("No results or the API did not respond.")
+
+        embed = discord.Embed(title=package["name"], url=package["repository"]["url"])
+        embed.add_field(name="Description", value=package["metadata"]["description"] or "No description.")
+        embed.add_field(name="Dependencies", value="\n".join(f"{d} ({v})"
+                                                             for d, v in package["metadata"]["dependencies"].items())
+                                                   or "No dependencies.")
+        embed.set_thumbnail(url="https://cdn.freebiesupply.com/logos/large/2x/atom-4-logo-png-transparent.png")
+        embed.set_footer(text=f"Stargazers: {package['stargazers_count']} | Downloads: {package['downloads']} "
+                              f"| Latest: {package['releases']['latest']}")
+
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

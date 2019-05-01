@@ -1,4 +1,5 @@
 import random
+import imghdr # thank god.
 from typing import Optional
 
 import discord
@@ -6,11 +7,6 @@ from discord.ext import commands, flags
 
 from utils.emotes import POPULAR
 from utils.image import *
-
-
-class Author(flags.ParamDefault):
-    async def default(self, ctx):
-        return ctx.author
 
 
 class FunStuff(commands.Cog, name="Fun"):
@@ -101,12 +97,12 @@ class FunStuff(commands.Cog, name="Fun"):
 
         await ctx.send(file=file)
 
-    @commands.command(name="gay", aliases=["gayify"], cls=flags.FlagCommand)
-    async def gayify(self, ctx, member: discord.Member = Author):
+    @commands.command(name="gay", aliases=["gayify"])
+    async def gayify(self, ctx, member: discord.Member = None):
         """Gayify someone or yourself."""
         await ctx.trigger_typing()
 
-        avatar = await get_avatar(member)
+        avatar = await get_avatar(member or ctx.author)
 
         image = await gayify_func(avatar, 128)
         file = discord.File(image, filename="gay.png")
@@ -159,33 +155,70 @@ class FunStuff(commands.Cog, name="Fun"):
 
     @commands.command(name="deepfry", cls=flags.FlagCommand)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def deep_fry(self, ctx, flags: flags.FlagParser(membe = discord.Member, amount = float) = flags.EmptyFlags):
+    async def deep_fry(self, ctx, args: flags.FlagParser(member=discord.Member, amount=float) = flags.EmptyFlags):
         """Deepfry yours or someone else's profile picture."""
         await ctx.trigger_typing()
-        avatar = await get_avatar(flags["member"] or ctx.author)
+        avatar = await get_avatar(args["member"] or ctx.author)
 
-        deepfried = await enhance(avatar, "color", flags["amount"] or 10)
+        deepfried = await enhance(avatar, "color", args["amount"] or 10)
         await ctx.send(file=discord.File(deepfried, filename="fried.jpeg"))
 
     @commands.command(name="sharpen", cls=flags.FlagCommand)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def sharp(self, ctx, *, flags: flags.FlagParser(member = discord.Member, amount = float) = flags.EmptyFlags):
+    async def sharp(self, ctx, *, args: flags.FlagParser(member=discord.Member, amount=float) = flags.EmptyFlags):
         """Sharpen yours or someone else's profile picture."""
         await ctx.trigger_typing()
-        avatar = await get_avatar(flags["member"] or ctx.author)
+        avatar = await get_avatar(args["member"] or ctx.author)
 
-        sharp = await enhance(avatar, "sharpness", flags["amount"] or 50, fmt="PNG", quality=None)
+        sharp = await enhance(avatar, "sharpness", args["amount"] or 50, fmt="PNG", quality=None)
         await ctx.send(file=discord.File(sharp, filename="sharp.png"))
 
     @commands.command(name="brighten", cls=flags.FlagCommand)
     @commands.cooldown(1, 3, commands.BucketType.user)
-    async def bright(self, ctx, *, flags: flags.FlagParser(member = discord.Member, amount = float) = flags.EmptyFlags):
+    async def bright(self, ctx, *, args: flags.FlagParser(member=discord.Member, amount=float) = flags.EmptyFlags):
         """Brighten yours or someone else's profile picture."""
         await ctx.trigger_typing()
-        avatar = await get_avatar(flags["member"] or ctx.author)
+        avatar = await get_avatar(args["member"] or ctx.author)
 
-        bright = await enhance(avatar, "brightness", flags["amount"] or 2, fmt="PNG", quality=None)
+        bright = await enhance(avatar, "brightness", args["amount"] or 2, fmt="PNG", quality=None)
         await ctx.send(file=discord.File(bright, filename="bright.png"))
+
+    @commands.command(name="magik")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def magik(self, ctx, member: discord.Member = None):
+        """M A G I K."""
+        async with ctx.typing():
+            avatar = await get_avatar(member or ctx.author)
+
+            magiked = await magik(avatar)
+
+        await ctx.send(file=discord.File(magiked, filename="magiked.png"))
+
+    @commands.command(name="gmagik")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def gmagik(self, ctx, url=None):
+        """M A G I K."""
+        if ctx.guild.id != 477245169167499274:
+            return await ctx.send("Command locked to certain guilds.")
+        if url:
+            img = BytesIO((await ctx.request("GET", url, as_bytes=True)))
+        else:
+            img = BytesIO()
+            try:
+                await ctx.message.attachments[0].save(img)
+            except IndexError:
+                raise commands.BadArgument("You must provide either an url or an attachment GIF.")
+
+        if not imghdr.what(None, h=img.read()) == "gif":
+            raise commands.BadArgument("You must provide either an url or an attachment GIF.")
+
+        async with ctx.typing():
+            img.seek(0)
+            magiked = await gmagik(img)
+            img.close()
+
+        await ctx.send(file=discord.File(magiked, filename="magiked.gif"))
+        magiked.close()
 
 
 def setup(bot):

@@ -26,7 +26,7 @@ class TakuruHelpCommand(commands.HelpCommand):
         return f"{self.clean_prefix}{fmt} {command.signature}"
 
     async def send_command_help(self, command):
-        lines = [f"**{command.qualified_name} help**", f"{command.help}\n",
+        lines = [f"**{command.qualified_name} help**", f"{command.help or 'No description.'}\n",
                  "**Usage:**", f"    ``{self.get_command_signature(command)}``",
                  f"\n**This command is part of the {command.cog_name} extension.**"]
 
@@ -36,11 +36,11 @@ class TakuruHelpCommand(commands.HelpCommand):
         cmd_filter = await self.filter_commands(group.commands, sort=True)
         lines = [f"**{group.qualified_name} group help**",
                  f"Use ``{self.clean_prefix}help [command]`` to know more about a command.\n",
-                 f"``{group.qualified_name}`` - **{group.short_doc}**"]
+                 f"``{group.qualified_name}`` - **{group.short_doc or 'No description.'}**"]
 
         if cmd_filter:
             for cmd in cmd_filter:
-                lines.append(f"    ╠``{cmd.name}`` - **{cmd.short_doc}**")
+                lines.append(f"    ╠``{cmd.name}`` - **{cmd.short_doc or 'No description.'}**")
 
         lines.append(f"\n**These commands are part of the {group.cog_name} extension.**")
 
@@ -54,9 +54,9 @@ class TakuruHelpCommand(commands.HelpCommand):
         if cmd_filter:
             for cmd in cmd_filter:
                 if isinstance(cmd, commands.Group):
-                    lines.append(f"``{cmd.name} (group)`` - **{cmd.short_doc}**")
+                    lines.append(f"``{cmd.name} (group)`` - **{cmd.short_doc or 'No description.'}**")
                 else:
-                    lines.append(f"``{cmd.name}`` - **{cmd.short_doc}**")
+                    lines.append(f"``{cmd.name}`` - **{cmd.short_doc or 'No descripton'}**")
 
         await self.context.send("\n".join(lines))
 

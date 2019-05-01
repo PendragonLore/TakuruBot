@@ -7,6 +7,7 @@ from datetime import datetime
 
 import aioredis
 import async_pokepy
+import async_cse
 import asyncpg
 import wavelink
 from discord.ext import commands
@@ -37,6 +38,12 @@ class TakuruBot(commands.Bot):
 
         self.init_time = datetime.utcnow()
 
+        self.blacklisted_users = set()
+        self.blacklisted_guilds = set()
+        self.blacklisted_channels = set()
+
+        self.built_blacklist = asyncio.Event()
+
         self.wavelink = wavelink.Client(self)
         self.config = config
         self.finished_setup = asyncio.Event(loop=self.loop)
@@ -51,7 +58,10 @@ class TakuruBot(commands.Bot):
         self._redis = None
         self.ezr = None
         self.pokeapi = None
+        self.google_api_keys = iter(config.google_custom_search_api_keys)
+        self.google = async_cse.Search(api_key=next(self.google_api_keys))
 
+        self.add_check(self.global_check)
         self.load_init_cogs()
 
     @property
@@ -73,11 +83,28 @@ class TakuruBot(commands.Bot):
 
     @property
     def uptime(self):
-        delta_uptime = datetime.utcnow() - bot.init_time
+        delta_uptime = datetime.utcnow() - self.init_time
         hours, remainder = divmod(int(delta_uptime.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
         days, hours = divmod(hours, 24)
         return f"{days}d, {hours}h, {minutes}m, {seconds}s"
+
+    async def global_check(self, ctx):
+        if not self.built_blacklist.is_set():
+            for thing in ["user", "guild", "channel"]:
+                for obj_id in await ctx.bot.redis("SMEMBERS", f"blacklisted_{thing}s"):
+                    getattr(self, f"blacklisted_{thing}s").add(obj_id)
+
+            self.built_blacklist.set()
+
+        if ctx.guild.id in self.blacklisted_guilds:
+            raise commands.BadArgument("This guild is blacklisted.")
+        if ctx.channel.id in self.blacklisted_channels:
+            raise commands.BadArgument("This channel is blacklisted.")
+        if ctx.author.id in ctx.bot.blacklisted_users:
+            raise commands.BadArgument("You are blacklisted.")
+
+        return True
 
     def dispatch(self, event_name, *args, **kwargs):
         if not self.finished_setup.is_set() and event_name in ("message", "command", "command_error"):
@@ -85,12 +112,12 @@ class TakuruBot(commands.Bot):
 
         return super().dispatch(event_name, *args, **kwargs)
 
-    async def get_custom_prefix(self, bot, message):
+    async def get_custom_prefix(self, bot_, message):
         if not self.prefixes:
-            async with bot.db.acquire() as db:
+            async with self.db.acquire() as db:
                 self.prefixes = [f"{record['prefix']} " for record in await db.fetch("SELECT prefix FROM prefixes;")]
 
-        return commands.when_mentioned_or(*self.prefixes)(bot, message)
+        return commands.when_mentioned_or(*self.prefixes)(bot_, message)
 
     async def on_ready(self):
         if self.finished_setup.is_set():
@@ -162,22 +189,19 @@ class TakuruBot(commands.Bot):
             return
 
 
-logging.basicConfig(level=logging.INFO)
-LOG = logging.getLogger("takuru")
-LOG.setLevel(logging.INFO)
+if __name__ == "__main__":
+    LOG = logging.getLogger("takuru")
+    LOG.setLevel(logging.INFO)
 
-bot = TakuruBot()
+    fmt = logging.Formatter("[%(asctime)s] - %(levelname)s:%(name)s %(message)s")
+    handler = logging.StreamHandler()
+    handler.setFormatter(fmt)
 
-handler = logging.FileHandler(filename=f"pokecom/takuru {bot.init_time.strftime('%Y-%m-%d_%H.%M.%S.%f')}.log",
-                              encoding="utf-8",
-                              mode="w")
-handler.setFormatter(logging.Formatter("[%(asctime)s:%(levelname)s]%(name)s %(message)s"))
-LOG.addHandler(handler)
+    bot = TakuruBot()
 
-try:
-    bot.loop.run_until_complete(bot.start(config.TAKURU_TOKEN))
-except KeyboardInterrupt:
-    bot.loop.run_until_complete(bot.close())
-finally:
-    LOG.info("Logged out")
-    print("Logged out")
+    files = logging.FileHandler(filename=f"pokecom/takuru {bot.init_time}.log", mode="w", encoding="utf-8")
+    files.setFormatter(fmt)
+
+    LOG.handlers = [handler, files]
+
+    bot.run(config.TAKURU_TOKEN)

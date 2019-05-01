@@ -32,6 +32,7 @@ class AltReplReactor(ReplResponseReactor):
 
 
 cog.JISHAKU_RETAIN = True
+cog.JISHAKU_HIDE = True
 cog.ReplResponseReactor = AltReplReactor
 
 

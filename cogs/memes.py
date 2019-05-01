@@ -364,6 +364,23 @@ class Memes(commands.Cog):
 
         await ctx.send(f"{recipient} is now the owner of {name}.")
 
+    @meme.command(name="random")
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def meme_random(self, ctx):
+        async with ctx.db.acquire() as db:
+            sql = """SELECT name, content
+                     FROM memes
+                     WHERE guild_id = $1
+                     OFFSET FLOOR(RANDOM() * (
+                         SELECT COUNT(*)
+                             FROM memes
+                             WHERE guild_id = $1
+                     )) LIMIT 1;"""
+
+            data = await db.fetchrow(sql, ctx.guild.id)
+
+        await ctx.send(f"Random meme: **{data['name']}**\n\n{data['content']}")
+
 
 def setup(bot):
     bot.add_cog(Memes())

@@ -2,6 +2,7 @@ import textwrap
 from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
+from wand.image import Image as WandImage
 from jishaku.functools import executor_function
 
 
@@ -90,6 +91,51 @@ def enhance(image, type_, amount, quality=1, fmt="JPEG"):
         ret = BytesIO()
         enhanced.save(ret, fmt, quality=quality)
 
+    ret.seek(0)
+    return ret
+
+
+@executor_function
+def magik(image):
+    with WandImage(file=image) as img:
+        ret = BytesIO()
+        img.liquid_rescale(
+            width=int(img.width * 0.4),
+            height=int(img.height * 0.4),
+            delta_x=1,
+            rigidity=0
+        )
+        img.liquid_rescale(
+            width=int(img.width * 1.6),
+            height=int(img.height * 1.6),
+            delta_x=2,
+            rigidity=0
+        )
+
+        img.save(file=ret)
+
+    ret.seek(0)
+    return ret
+
+
+@executor_function
+def gmagik(image):
+    fin = WandImage()
+    ret = BytesIO()
+
+    with WandImage(file=image) as gif:
+        for f in gif.sequence:
+            with WandImage(image=f) as frame:
+                frame.transform(resize='800x800>')
+                frame.liquid_rescale(width=int(frame.width * 0.5), height=int(frame.height * 0.5), delta_x=1,
+                                     rigidity=0)
+                frame.liquid_rescale(width=int(frame.width * 1.5), height=int(frame.height * 1.5), delta_x=2,
+                                     rigidity=0)
+                frame.resize(frame.width, frame.height)
+                fin.sequence.append(frame)
+
+    fin.save(file=ret)
+    fin.destroy()
     ret.seek(0)
     return ret
 
