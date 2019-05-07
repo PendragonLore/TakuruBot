@@ -33,7 +33,7 @@ class Moderator(commands.Cog):
 
         amount = args["amount"] or 10
         if amount > 500:
-            return await ctx.send("Maximum of 1000 messages per command.")
+            return await ctx.send("Maximum of 500 messages per command.")
 
         check = None
         if args["bot_only"] is not None:
