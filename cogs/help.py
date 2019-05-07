@@ -1,13 +1,15 @@
 from discord.ext import commands
 
-from utils import TakuruHelpCommand
+from utils.helpformatter import TakuruHelpCommand
 
 
 class Help(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._original_help_command = bot.help_command
-        bot.help_command = TakuruHelpCommand()
+        bot.help_command = TakuruHelpCommand(verify_checks=True, show_hidden=False, command_attrs={
+            "cooldown": commands.Cooldown(1, 2.5, commands.BucketType.user)
+        })
         bot.help_command.cog = self
         self.bot.get_command("help").hidden = True
 

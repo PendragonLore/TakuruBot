@@ -9,18 +9,18 @@ from utils.formats import PaginationError
 
 
 class CommandHandler(commands.Cog):
-    def bot_check(self, ctx):
-        if ctx.guild is not None:
-            return True
-        raise commands.NoPrivateMessage
-
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
             return
 
         exc = getattr(error, "original", error)
-        react = ctx.message.add_reaction
+
+        async def react(reaction):
+            try:
+                ctx.message.add_reaction(reaction)
+            except discord.HTTPException:
+                return
 
         if isinstance(exc, commands.NoPrivateMessage):
             try:
@@ -63,7 +63,7 @@ class CommandHandler(commands.Cog):
 
         if isinstance(exc, PaginationError):
             await react(ARI_DERP)
-            return await ctx.send("No pages to paginate, probably because your command returned nothing.")
+            return await ctx.send("No pages to paginate.")
 
         if isinstance(exc, discord.Forbidden):
             await react(YAM_SAD)
@@ -75,7 +75,7 @@ class CommandHandler(commands.Cog):
         else:
             traceback.print_exception(type(error), error, error.__traceback__)
 
-            stack = 5  # how many levels deep to trace back
+            stack = 8  # how many levels deep to trace back
             traceback_text = "\n".join(traceback.format_exception(type(error), error, error.__traceback__, stack))
             owner = ctx.bot.get_user(ctx.bot.owner_id)
 

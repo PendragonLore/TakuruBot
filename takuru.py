@@ -11,20 +11,26 @@ import async_cse
 import asyncpg
 import wavelink
 from discord.ext import commands
-import uvloop
+# import uvloop
 
 import config
 import utils
 
-uvloop.install()
+# uvloop.install()
 
 
 class RightSiderContext(commands.Context):
     async def paginate(self, entries: list, is_embed: bool = True):
         await utils.Paginator(self, entries, is_embed).paginate()
 
-    async def request(self, method: str, url: str, **params):
-        return await self.bot.ezr.request(method, url, **params)
+    async def _request(self, __method: str, __url: str, **params):
+        return await self.bot.ezr.request(__method, __url, **params)
+
+    async def post(self, *args, **kwargs):
+        return await self._request("POST", *args, **kwargs)
+
+    async def get(self, *args, **kwargs):
+        return await self._request("GET", *args, **kwargs)
 
     @property
     def db(self):
@@ -49,7 +55,7 @@ class TakuruBot(commands.Bot):
         self.finished_setup = asyncio.Event(loop=self.loop)
 
         self.http_headers = {
-            "User-Agent": "Python aiohttp"
+            "User-Agent": "Python/aiohttp"
         }
 
         self.init_cogs = [f"cogs.{ext.stem}" for ext in pathlib.Path("cogs/").glob("*.py")]
@@ -90,6 +96,9 @@ class TakuruBot(commands.Bot):
         return f"{days}d, {hours}h, {minutes}m, {seconds}s"
 
     async def global_check(self, ctx):
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage()
+
         if not self.built_blacklist.is_set():
             for thing in ["user", "guild", "channel"]:
                 for obj_id in await ctx.bot.redis("SMEMBERS", f"blacklisted_{thing}s"):
@@ -153,14 +162,14 @@ class TakuruBot(commands.Bot):
 
     async def on_command(self, ctx):
         if ctx.guild is not None:
-            LOG.info("%s ran command %s in %s in #%s", str(ctx.message.author), ctx.command.qualified_name,
-                     str(ctx.guild), str(ctx.channel))
+            LOG.info("%s ran command %s in %s in #%s", ctx.message.author, ctx.command.qualified_name,
+                     ctx.guild, ctx.channel)
 
     async def on_guild_join(self, guild):
-        LOG.info("Joined guild %s with %d members, owner: %s", str(guild), guild.member_count, str(guild.owner))
+        LOG.info("Joined guild %s with %d members, owner: %s", guild, guild.member_count, guild.owner)
 
     async def on_guild_remove(self, guild):
-        LOG.info("Removed from guild %s with %d members, owner: %s", str(guild), guild.member_count, str(guild.owner))
+        LOG.info("Removed from guild %s with %d members, owner: %s", guild, guild.member_count, guild.owner)
 
     async def close(self):
         self.finished_setup.clear()
@@ -179,7 +188,7 @@ class TakuruBot(commands.Bot):
                 self.load_extension(cog)
                 LOG.info("Successfully loaded %s", cog)
             except Exception as exc:
-                LOG.critical("Failed to load %s [%s: %s]", cog, type(exc).__name__, str(exc))
+                LOG.critical("Failed to load %s [%s: %s]", cog, type(exc).__name__, exc)
                 traceback.print_exc()
 
     async def redis(self, *args, **kwargs):
@@ -203,5 +212,6 @@ if __name__ == "__main__":
     files.setFormatter(fmt)
 
     LOG.handlers = [handler, files]
+    bot.loop.set_debug(True)
 
     bot.run(config.TAKURU_TOKEN)

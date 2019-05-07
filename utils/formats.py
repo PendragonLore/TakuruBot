@@ -4,11 +4,16 @@ import discord
 from discord.ext import commands
 
 
-class PaginationError(commands.CommandInvokeError):
+class PaginationError(Exception):
     pass
 
 
 class Paginator:
+    __slots__ = (
+        "ctx", "bot", "user", "channel", "msg", "execute", "embed", "max_pages", "entries",
+        "paginating", "current", "reactions"
+    )
+
     def __init__(self, ctx, entries: list, embed: bool = True):
         self.ctx = ctx
         self.bot = ctx.bot
@@ -31,7 +36,8 @@ class Paginator:
 
     async def setup(self):
         if not self.entries:
-            raise PaginationError("No entries.")
+            e = PaginationError("No pagination entries.")
+            raise commands.CommandInvokeError(e) from e
 
         if self.embed is False:
             try:
@@ -81,9 +87,9 @@ class Paginator:
         try:
             await self.msg.clear_reactions()
         except discord.Forbidden:
-            pass
-
-        self.paginating = False
+            await self.msg.delete()
+        finally:
+            self.paginating = False
 
     async def info(self):
         """shows this page."""
@@ -132,6 +138,8 @@ class Paginator:
 
 
 class Tabulator:
+    __slots__ = ("_widths", "_columns", "_rows")
+
     def __init__(self):
         self._widths = []
         self._columns = []

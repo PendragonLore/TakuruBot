@@ -43,19 +43,6 @@ class Markov(commands.Cog):
 
         await self.markovgen(ctx)
 
-    @commands.command()
-    @commands.cooldown(1, 4, commands.BucketType.user)
-    async def markov(self, ctx):
-        """Generate a markov chain based off the last 100 messages not from bots."""
-        async for content in ctx.channel.history(limit=100).filter(lambda m: not m.author.bot).map(lambda m: m.content):
-            text = MarkovText()
-            text.data(content, part=True)
-
-        try:
-            await ctx.send(text())
-        except NameError:
-            await ctx.send("Was not able to generate chain.")
-
     async def markovgen(self, ctx):
         randomized_int = random.randint(1, 602)
         async with aiofiles.open(f"markov/markov ({randomized_int}).txt") as f:
@@ -63,7 +50,8 @@ class Markov(commands.Cog):
             async for line in f:
                 text.data(line, part=True)
 
-        await ctx.send(text())
+        clean = await commands.clean_content(fix_channel_mentions=True).convert(ctx, text())
+        await ctx.send(clean)
 
     async def do_log(self, msg):
         randomized_int = random.randint(1, 602)

@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 
 from jishaku import cog
 from jishaku.exception_handling import *
@@ -32,8 +33,9 @@ class AltReplReactor(ReplResponseReactor):
 
 
 cog.JISHAKU_RETAIN = True
-cog.JISHAKU_HIDE = True
 cog.ReplResponseReactor = AltReplReactor
+os.environ["JISHAKU_HIDE"] = "1"
+os.environ["JISHAKU_NO_UNDERSCORE"] = "1"
 
 
 class Jishaku(cog.Jishaku):

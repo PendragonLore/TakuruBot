@@ -1,11 +1,12 @@
 import random
-import imghdr # thank god.
+import imghdr  # thank god.
 from typing import Optional
+from numpy.random import choice
 
 import discord
 from discord.ext import commands, flags
 
-from utils.emotes import POPULAR
+from utils.emotes import POPULAR, FORWARD, BACKWARDS
 from utils.image import *
 
 
@@ -13,13 +14,13 @@ class FunStuff(commands.Cog, name="Fun"):
     """Fun stuff, I think."""
 
     @commands.command(name="dog", aliases=["dogs", "doggos", "doggo"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def dogs(self, ctx, amount: Optional[int] = 1):
         """Get a random dog image, up to 50 per command."""
         if amount > 50:
             return await ctx.send("You can only get up to 50 dog pics at a time.")
 
-        dogs = await ctx.request("GET", f"https://dog.ceo/api/breeds/image/random/{amount}")
+        dogs = await ctx.get(f"https://dog.ceo/api/breeds/image/random/{amount}")
         embeds = []
 
         for dog in dogs["message"]:
@@ -31,7 +32,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.paginate(embeds)
 
     @commands.command(name="cat", aliases=["cats"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def cats(self, ctx, amount: Optional[int] = 1):
         """Get a random cat image, up to 100 per command."""
         if amount > 100:
@@ -39,7 +40,7 @@ class FunStuff(commands.Cog, name="Fun"):
 
         headers = (("x-api-key", ctx.bot.config.CATAPI_KEY),)
 
-        cats = await ctx.request("GET", "https://api.thecatapi.com/v1/images/search", limit=amount, headers=headers)
+        cats = await ctx.get("https://api.thecatapi.com/v1/images/search", limit=amount, headers=headers)
         embeds = []
 
         for cat in cats:
@@ -51,34 +52,26 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.paginate(embeds)
 
     @commands.command(name="lenny")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def lenny(self, ctx):
         """Get a random lenny."""
         lennies = ["( ͡° ͜ʖ ͡°)", "( ͡~ ͜ʖ ͡°)", "( ͡° ͜ʖ ͡ °)", "(˵ ͡~ ͜ʖ ͡°˵)ﾉ⌒♡*:･。.",
                    "(∩ ͡° ͜ʖ ͡°)⊃━☆─=≡Σ((( つ◕ل͜◕)つ", "( ͡ ͡° ͡°  ʖ ͡° ͡°)", "ヽ(͡◕ ͜ʖ ͡◕)ﾉ"
-                                                                            "(ಥ ͜ʖಥ)╭∩╮", "( ͡° ͜ʖ ͡°) ╯︵ ┻─┻",
-                   "┬──┬ ノ( ͡° ل͜ ͡°ノ)", "( ͡° ▽ ͡°)爻( ͡° ل͜ ͡° ☆)"]
+                   "(ಥ ͜ʖಥ)╭∩╮", "( ͡° ͜ʖ ͡°) ╯︵ ┻─┻", "┬──┬ ノ( ͡° ل͜ ͡°ノ)", "( ͡° ▽ ͡°)爻( ͡° ل͜ ͡° ☆)"]
         await ctx.send(random.choice(lennies))
 
     @commands.command(name="8ball")
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def eight_ball(self, ctx):
-        """\"I guess I'll have to answer your dumb questions.\""""
-        possible_responses = ["No.", "Fuck off.", "Maybe.", "Dumb.", "Yes.", "Idk.", "lmao", "Meh."]
-        await ctx.send(f"**{ctx.message.author.name}** | {random.choice(possible_responses)}")
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def eight_ball(self, ctx, *, question: commands.clean_content):
+        """Answer questions."""
+        possible_responses = ["no.", "maybe.", "dumb.", "yes.", "idk.", "meh."]
+        await ctx.send(f"**Question: {question}** | All signs point to "
+                       f"{FORWARD} **{random.choice(possible_responses)}** {BACKWARDS}")
 
     @commands.command(name="circle")
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def circle(self, ctx, color: Optional[str] = None):
-        """Make your profile picture a circle.
-        You can also provide a color which must be formatted like this \"RED,GREEN,BLUE,ALPHA\".
-        Each value must be a number between 0 and 255."""
-        if not color:
-            color = (0, 0, 0, 0)
-        else:
-            color = tuple(int(col) for col in color.split(","))
-            if len(color) > 4:
-                return await ctx.send("Not a valid color.")
-
+        """Make your profile picture a circle."""
         avatar = await get_avatar(ctx.author)
         final_buffer = await circle_func(avatar, color)
 
@@ -87,7 +80,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(file=file)
 
     @commands.command(name="trump", aliases=["donaldtrump"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def trump_meme(self, ctx, *, text):
         """Donald trump memes are still relevant right????"""
         await ctx.trigger_typing()
@@ -98,6 +91,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(file=file)
 
     @commands.command(name="gay", aliases=["gayify"])
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def gayify(self, ctx, member: discord.Member = None):
         """Gayify someone or yourself."""
         await ctx.trigger_typing()
@@ -110,18 +104,15 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(file=file)
 
     @commands.command(name="owoify")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def owoify(self, ctx, *, text: commands.clean_content):
-        """Owoify some text ~~*send help*~~.
-        Maximum of 200 characters."""
-        if len(text) > 200:
-            return await ctx.send("200 characters at maximum.")
-
-        owo = (await ctx.request("GET", "https://nekos.life/api/v2/owoify", text=text, json=True))["owo"]
-        await ctx.send(owo)
+        """Owoify some text ~~*send help*~~."""
+        owo_chars = ["w", "u", "owo", "uwu", "ww", "n", "nya"]
+        owod = "".join(choice([x, random.choice(owo_chars)], replace=True, p=[0.75, 0.25]) for x in text)
+        await ctx.send(owod)
 
     @commands.command(name="comment")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def yt_comment(self, ctx, *, text):
         """Make you comment on YouTube."""
         await ctx.trigger_typing()
@@ -154,7 +145,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(f"{clap}{clapped}{clap}")
 
     @commands.command(name="deepfry", cls=flags.FlagCommand)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def deep_fry(self, ctx, args: flags.FlagParser(member=discord.Member, amount=float) = flags.EmptyFlags):
         """Deepfry yours or someone else's profile picture."""
         await ctx.trigger_typing()
@@ -164,7 +155,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(file=discord.File(deepfried, filename="fried.jpeg"))
 
     @commands.command(name="sharpen", cls=flags.FlagCommand)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def sharp(self, ctx, *, args: flags.FlagParser(member=discord.Member, amount=float) = flags.EmptyFlags):
         """Sharpen yours or someone else's profile picture."""
         await ctx.trigger_typing()
@@ -174,7 +165,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(file=discord.File(sharp, filename="sharp.png"))
 
     @commands.command(name="brighten", cls=flags.FlagCommand)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def bright(self, ctx, *, args: flags.FlagParser(member=discord.Member, amount=float) = flags.EmptyFlags):
         """Brighten yours or someone else's profile picture."""
         await ctx.trigger_typing()
@@ -184,7 +175,7 @@ class FunStuff(commands.Cog, name="Fun"):
         await ctx.send(file=discord.File(bright, filename="bright.png"))
 
     @commands.command(name="magik")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def magik(self, ctx, member: discord.Member = None):
         """M A G I K."""
         async with ctx.typing():
@@ -194,14 +185,14 @@ class FunStuff(commands.Cog, name="Fun"):
 
         await ctx.send(file=discord.File(magiked, filename="magiked.png"))
 
-    @commands.command(name="gmagik")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.command(name="gmagik", hidden=True)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def gmagik(self, ctx, url=None):
-        """M A G I K."""
+        """M A G I K but with GIFs."""
         if ctx.guild.id != 477245169167499274:
             return await ctx.send("Command locked to certain guilds.")
         if url:
-            img = BytesIO((await ctx.request("GET", url, as_bytes=True)))
+            img = BytesIO((await ctx.get(url)))
         else:
             img = BytesIO()
             try:
@@ -215,10 +206,8 @@ class FunStuff(commands.Cog, name="Fun"):
         async with ctx.typing():
             img.seek(0)
             magiked = await gmagik(img)
-            img.close()
 
         await ctx.send(file=discord.File(magiked, filename="magiked.gif"))
-        magiked.close()
 
 
 def setup(bot):

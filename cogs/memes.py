@@ -25,12 +25,25 @@ class MemeName(commands.clean_content):
         return converted
 
 
+class MemeContent(commands.clean_content):
+    async def convert(self, ctx, argument):
+        clean = await super().convert(ctx, argument)
+
+        if len(clean) > 1850:
+            raise commands.BadArgument("Meme content lenght must be under 1850 characters.")
+
+        return clean
+
+
 class Memes(commands.Cog):
     """EPIC M E M E Z"""
 
     @commands.command(name="install")
+    @commands.cooldown(1, 4, commands.BucketType.user)
     async def install_(self, ctx, *, package: commands.clean_content):
-        """Install a package from homebrew."""
+        """Install a package from homebrew.
+
+        ~~not really tho.~~"""
         msg = await ctx.send("Updating homebrew...")
 
         await asyncio.sleep(3)
@@ -54,12 +67,12 @@ class Memes(commands.Cog):
         await ctx.send("tldr no")
 
     @commands.command(name="realquote")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def real_quote(self, ctx):
         """Get an inspring quote..."""
         def predicate(m):
             return m.content and not m.author == ctx.bot.user and not any(m.content.startswith(p)
-                                                                          for p in ctx.bot.config.PREFIXES)
+                                                                          for p in ctx.bot.prefixes)
         messages = await ctx.channel.history(limit=100).filter(predicate).flatten()
         if not messages:
             return await ctx.send("No quotes for today... 😔")
@@ -68,10 +81,11 @@ class Memes(commands.Cog):
         return await ctx.send(f"A certain {quote.author.name} once said: *\"{quote.content}\"* 😔")
 
     @commands.command(name="funnyjoke")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def joke(self, ctx):
-        await ctx.send((await ctx.request("GET", "https://icanhazdadjoke.com/", json=True,
-                                          headers=(("Accept", "application/json"),)))["joke"])
+        """Get an ~~un~~funny joke."""
+        await ctx.send((await ctx.get("https://icanhazdadjoke.com/",
+                                      headers=(("Accept", "application/json"),)))["joke"])
 
     async def generate_embeds(self, ctx, meme_list):
         embeds = []
@@ -136,31 +150,37 @@ class Memes(commands.Cog):
         await ctx.send(meme)
 
     @commands.group(name="meme", invoke_without_command=True, case_insensitive=True)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme(self, ctx, *, meme: MemeName = None):
-        """Memes related functions, all persistent and guild-locked."""
+        """Commands related to the meme system.
+
+        If a meme name is provided it will search the database for it."""
         if not meme:
             return await ctx.send_help("meme")
 
         await ctx.invoke(self.meme_send, name=meme)
 
     @meme.command(name="get", aliases=["send"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_send(self, ctx, *, name: MemeName):
-        """Search and send a meme."""
+        """Send a meme."""
         await self.get_meme(ctx, name, raw=False)
 
     @meme.command(name="raw")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_raw(self, ctx, *, name: MemeName):
-        """Get the raw content of a meme."""
+        """Get the raw content of a meme.
+
+        Raw content escapes any markdown formatting,
+        e.g. \"**a meme**\" becomes \"\\*\\*a meme\\*\\*\""""
         await self.get_meme(ctx, name, raw=True)
 
     @meme.command(name="claim")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_claim(self, ctx, *, meme: MemeName):
-        """Get the ownership of a meme.
-        The original owner must be out of the guild."""
+        """Claim the ownership of a meme.
+
+        The original owner must have left the guild."""
         async with ctx.db.acquire() as db:
             sql = """SELECT owner_id
                         FROM memes
@@ -194,16 +214,30 @@ class Memes(commands.Cog):
         await ctx.send(f"You are now the owner of {meme}.")
 
     @meme.command(name="add")
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_add(self, ctx, name: MemeName, *, content: commands.clean_content):
-        """Add a meme."""
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def meme_add(self, ctx, name: MemeName, *, content: MemeContent):
+        """Add a meme.
+
+        You can also add an attachment to the meme as an url,
+        only the first one of your messagge will be included.
+
+        If with the URL the meme's content becomes too big it will be discarded."""
         async with ctx.db.acquire() as db:
             sql = """INSERT INTO memes
-                            (guild_id, name, content, owner_id) 
-                            VALUES 
-                            ($1, $2, $3, $4);"""
+                        (guild_id, name, content, owner_id) 
+                        VALUES 
+                        ($1, $2, $3, $4);"""
 
             try:
+                try:
+                    att = ctx.message.attachments[0].url
+                    if not (len(att) + len(content)) > 1850:
+                        content += f"\n\n{att}"
+                    else:
+                        await ctx.send("Attachment discarded because it would make the meme's content too long.")
+                except IndexError:
+                    pass
+
                 await db.execute(sql, ctx.guild.id, name, content, ctx.author.id)
             except asyncpg.UniqueViolationError:
                 return await ctx.send(f"Meme {name} already exists.")
@@ -211,7 +245,7 @@ class Memes(commands.Cog):
         await ctx.send(f"Successfully added meme {name}.")
 
     @meme.command(name="list", aliases=["lis"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_list(self, ctx):
         """Get a list of all the guild's memes."""
         async with ctx.db.acquire() as db:
@@ -230,9 +264,9 @@ class Memes(commands.Cog):
         await self.generate_embeds(ctx, memes_list)
 
     @meme.command(name="remove", aliases=["delete", "del"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_remove(self, ctx, *, name: MemeName):
-        """Delete a meme, you must own it."""
+        """Delete a meme, you have to own it."""
         async with ctx.db.acquire() as db:
             sql = """DELETE
                         FROM memes 
@@ -248,9 +282,10 @@ class Memes(commands.Cog):
         await ctx.send(f"Successfully deleted meme {name}.")
 
     @meme.command(name="search")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_search(self, ctx, *, name: MemeName):
-        """Search for a meme.
+        """Search for a meme from the database.
+
         The query must be at least 3 characters."""
         if len(name) < 3:
             return await ctx.send("Query must be at least 3 characters.")
@@ -265,9 +300,11 @@ class Memes(commands.Cog):
         await self.generate_embeds(ctx, memes)
 
     @meme.command(name="edit")
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def meme_edit(self, ctx, name: MemeName, *, new_content: commands.clean_content):
-        """Edit a meme's content, you must own it."""
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def meme_edit(self, ctx, name: MemeName, *, new_content: MemeContent):
+        """Edit a meme's content, you have to own it.
+
+        Unlike in `meme add` this does not support attachments."""
         async with ctx.db.acquire() as db:
             sql = """UPDATE memes
                         SET content = $1
@@ -283,9 +320,11 @@ class Memes(commands.Cog):
         await ctx.send(f"Updated content of {name} to {new_content}")
 
     @meme.command(name="info")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_info(self, ctx, *, name: MemeName):
-        """Get a meme's info."""
+        """Get a meme's info.
+
+        This includes owner info, number of uses, name and creation date."""
         async with ctx.db.acquire() as db:
             sql = """SELECT *
                         FROM memes
@@ -316,10 +355,11 @@ class Memes(commands.Cog):
         await ctx.send(embed=embed)
 
     @meme.command(name="memes")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_memes(self, ctx, member: discord.Member = None):
-        """Get all of yours or another member's memes."""
+        """Get all the memes a member owns."""
         member = member or ctx.author
+
         async with ctx.db.acquire() as db:
             sql = """SELECT name
                         FROM memes
@@ -337,9 +377,9 @@ class Memes(commands.Cog):
         await self.generate_embeds(ctx, memes_list)
 
     @meme.command(name="transfer")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def transfer_ownership(self, ctx, name: MemeName, recipient: discord.Member):
-        """Transfer the ownership of a meme, you must own it."""
+        """Transfer the ownership of a meme, you have to own it."""
         if recipient.id == ctx.author.id:
             return await ctx.send(f"You already own {name}.")
 
@@ -365,17 +405,17 @@ class Memes(commands.Cog):
         await ctx.send(f"{recipient} is now the owner of {name}.")
 
     @meme.command(name="random")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def meme_random(self, ctx):
+        """Get a random meme.
+
+        The number of uses will not be increased."""
         async with ctx.db.acquire() as db:
             sql = """SELECT name, content
                      FROM memes
                      WHERE guild_id = $1
-                     OFFSET FLOOR(RANDOM() * (
-                         SELECT COUNT(*)
-                             FROM memes
-                             WHERE guild_id = $1
-                     )) LIMIT 1;"""
+                     ORDER BY RANDOM()
+                     LIMIT 1;"""
 
             data = await db.fetchrow(sql, ctx.guild.id)
 

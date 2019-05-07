@@ -10,27 +10,29 @@ import utils
 
 
 class Moderator(commands.Cog):
-    """Commands for moderation purposes."""
+    """Commands for moderation purposes.
+    Work in progress."""
 
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name="purge", aliases=["prune"], cls=flags.FlagCommand)
     @utils.bot_and_author_have_permissions(manage_messages=True)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def bulk_delete(self, ctx, *, args: flags.FlagParser(
         amount = int,
         bot_only = bool,
         member = discord.Member
     ) = flags.EmptyFlags):
         """Bulk-delete a certain amout of messages in the current channel.
+
         The amount of messages specified might not be the amount deleted.
-        Limit is set to 1000 per command, the bot can't delete messages older than 14 days."""
+        Limit is set to 500 per command, the bot can't delete messages older than 14 days."""
         if args["bot_only"]and args["member"]:
             raise commands.BadArgument("Either specify a member or bot only, not both.")
 
         amount = args["amount"] or 10
-        if amount > 1000:
+        if amount > 500:
             return await ctx.send("Maximum of 1000 messages per command.")
 
         check = None
@@ -50,7 +52,7 @@ class Moderator(commands.Cog):
 
     @commands.command(name="kick")
     @utils.bot_and_author_have_permissions(kick_members=True)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def kick(self, ctx, member: discord.Member, *, reason: typing.Optional[str] = None):
         """Kick a member, you can also provide a reason."""
         reason = reason or "No reason."
@@ -64,7 +66,7 @@ class Moderator(commands.Cog):
 
     @commands.command(name="ban")
     @utils.bot_and_author_have_permissions(ban_members=True)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def ban(self, ctx, member: discord.Member, *, reason: typing.Optional[str] = None):
         """Ban a member, you can also provide a reason."""
         reason = reason or "No reason."
@@ -77,7 +79,7 @@ class Moderator(commands.Cog):
 
     @commands.command(name="unban")
     @utils.bot_and_author_have_permissions(ban_members=True)
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def unban(self, ctx, user_id: int, *, reason):
         """Unban a member, only IDs accepted."""
         member = discord.Object(id=user_id)

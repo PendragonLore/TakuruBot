@@ -245,6 +245,7 @@ class Player(wavelink.Player):
             self.reaction_task.cancel()
         except Exception:
             pass
+
         self.updating = False
         self.update = False
         self.looping = False

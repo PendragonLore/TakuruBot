@@ -12,8 +12,6 @@ from urllib.parse import quote as urlquote
 import discord
 from discord.ext import commands
 import humanize
-import lxml.etree as etree
-from lru import LRU
 
 
 class General(commands.Cog):
@@ -22,7 +20,6 @@ class General(commands.Cog):
     TOKEN_REGEX = re.compile(r"[a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9_\-]{27}|mfa\.[a-zA-Z0-9_\-]{84}")
 
     def __init__(self):
-        self.mal_cache = LRU(64)
         self.coliru_mapping = {
             'cpp': 'g++ -std=c++1z -O2 -Wall -Wextra -pedantic -pthread main.cpp -lstdc++fs && ./a.out',
             'c': 'mv main.cpp main.c && gcc -std=c11 -O2 -Wall -Wextra -pedantic main.c && ./a.out',
@@ -31,7 +28,7 @@ class General(commands.Cog):
         }
 
     @commands.command(name="userinfo")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def userinfo(self, ctx, member: typing.Optional[discord.Member] = None):
         """Get yours or a mentioned user's information."""
         member = member or ctx.author
@@ -60,13 +57,13 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="invite")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def invite(self, ctx):
         """Send an invite for the bot."""
         await ctx.send(discord.utils.oauth_url(ctx.bot.user.id, permissions=discord.Permissions(37055814)))
 
     @commands.command(name="avatar", aliases=["av", "pfp"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def avatar_url(self, ctx, member: typing.Optional[discord.Member] = None):
         """Get yours or some mentioned users' profile picture."""
         member = member or ctx.author
@@ -87,7 +84,7 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="ping")
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def ping(self, ctx):
         """It's like pings but pongs without pings."""
         start = time.perf_counter()
@@ -98,6 +95,7 @@ class General(commands.Cog):
                                    f"websocket latency is {ctx.bot.latency * 1000:.2f}ms")
 
     @commands.command(name="about")
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def about(self, ctx):
         """Get some basic info about the bot."""
         python_v = ".".join(map(str, list(sys.version_info[0:3])))
@@ -121,8 +119,10 @@ class General(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(hidden=True)
+    @commands.command()
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def source(self, ctx):
+        """Get the GitHub repo url for this bot."""
         source_url = "https://github.com/PendragonLore/TakuruBot"
         await ctx.send(source_url)
 
@@ -144,7 +144,7 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="firstmsg", aliases=["firstmessage"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def first_message(self, ctx, channel: typing.Optional[discord.TextChannel] = None):
         """Get the current or a mentioned channel's first message."""
         if not channel:
@@ -162,13 +162,13 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="rtfs", aliases=["rts", "readthesource", "readthefuckingsourcegoddamnit"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def read_the_source(self, ctx, *, query: typing.Optional[str] = None):
         """Search the GitHub repo of discord.py."""
         if not query:
             return await ctx.send("https://github.com/Rapptz/discord.py")
 
-        source = await ctx.request("GET", "https://rtfs.eviee.host/dpy/v1", search=query, limit=12)
+        source = await ctx.get("https://rtfs.eviee.host/dpy/v1", search=query, limit=12)
         thing = []
 
         for result in source["results"]:
@@ -183,9 +183,10 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="coliru", aliases=["run", "openeval"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def coliru(self, ctx, *, code):
         """Run code on coliru.
+
         Supports, and probably will only ever support, c, c++ and python 3.5.x
         You need to include a codeblock which denotes the language.
         Do not abuse this kthx."""
@@ -205,7 +206,7 @@ class General(commands.Cog):
 
         data = json.dumps(payload)
 
-        response = await ctx.request("POST", "http://coliru.stacked-crooked.com/compile", json=False, data=data)
+        response = await ctx.post("http://coliru.stacked-crooked.com/compile", data=data)
         clean = await commands.clean_content(use_nicknames=False).convert(ctx, response)
 
         try:
@@ -214,19 +215,28 @@ class General(commands.Cog):
             await ctx.invoke(ctx.bot.get_command("hastebin"), content=clean)
 
     @commands.command(name="emoji", aliases=["bigmoji", "hugemoji", "e"])
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def big_emoji(self, ctx, emoji: discord.PartialEmoji):
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def big_emoji(self, ctx, emoji: typing.Union[discord.Emoji, discord.PartialEmoji, str]):
         """Get a big version of an emoji."""
-        fp = io.BytesIO()
-        await emoji.url.save(fp)
-        await ctx.send(file=discord.File(fp, filename=f"{emoji.name}{'.png' if not emoji.animated else '.gif'}"))
+        if isinstance(emoji, (discord.Emoji, discord.PartialEmoji)):
+            fp = io.BytesIO()
+            await emoji.url.save(fp)
+
+            await ctx.send(file=discord.File(fp, filename=f"{emoji.name}{'.png' if not emoji.animated else '.gif'}"))
+        else:
+            fmt_name = "-".join("{:x}".format(ord(c)) for c in emoji)
+            r = await ctx.get(f"http://twemoji.maxcdn.com/2/72x72/{fmt_name}.png")
+
+            await ctx.send(file=discord.File(io.BytesIO(r), filename=f"{fmt_name}.png"))
 
     @commands.command(name="say", aliases=["echo"])
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def say(self, ctx, *, arg: commands.clean_content):
         """Make the bot repeat what you say."""
         await ctx.send(arg)
 
-    @commands.command(name="parsetoken")
+    @commands.command(name="parsetoken", aliases=["tokenparse"])
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
     async def parse_token(self, ctx, *, token):
         """Parse a Discord auth token."""
         if not self.TOKEN_REGEX.match(token):
@@ -237,9 +247,9 @@ class General(commands.Cog):
             return await ctx.send("Not a valid token.")
 
         try:
-            id = base64.standard_b64decode(t[0]).decode("utf-8")
+            id_ = base64.standard_b64decode(t[0]).decode("utf-8")
             try:
-                user = await ctx.bot.fetch_user(int(id))
+                user = await ctx.bot.fetch_user(int(id_))
             except discord.HTTPException:
                 user = None
         except binascii.Error:
@@ -256,56 +266,20 @@ class General(commands.Cog):
             return await ctx.send("Failed to decode timestamp.")
 
         fmt = f"**Valid token.**\n\n**ID**: {id}\n" \
-            f"**Created at**: {date}\n**Owner**: {user if user else '*Was not able to fetch it*.'}" \
+            f"**Created at**: {date}\n**Owner**: {user or '*Was not able to fetch it*.'}" \
             f"\n**Cryptographic component**: {t[2]}"
 
         await ctx.send(fmt)
 
-    async def get_mal_search(self, ctx, query):
-        cache_check = self.mal_cache.get(query.lower(), None)
-        if cache_check is not None:
-            return cache_check
-
-        html = await ctx.request("GET", "https://myanimelist.net/anime.php", q=query, json=False)
-        nodes = etree.fromstring(html, etree.HTMLParser())
-
-        titles = tuple(title for title in nodes.xpath("//img/@alt")[2:])
-        urls = tuple(url for url in nodes.xpath("//a[@class='hoverinfo_trigger']/@href"))
-        descs = tuple(t for t in nodes.xpath("//div[@class='pt4']/text()"))
-        thumbs = tuple(img for img in nodes.xpath("//img/@data-src"))
-
-        result = tuple(zip(titles, urls, descs, thumbs))
-
-        self.mal_cache[query.lower()] = result
-
-        return result
-
-    @commands.command(name="MAL", aliases=["anime"])
-    async def anime(self, ctx, *, name):
-        """Search for an anime on My Anime List."""
-        results = await self.get_mal_search(ctx, name)
-        embeds = []
-
-        for title, url, desc, thumb in results:
-            embed = discord.Embed(title=title, colour=discord.Colour.from_rgb(54, 57, 62))
-
-            embed.set_thumbnail(url=thumb)
-            embed.add_field(name="Short description", value=desc)
-            embed.add_field(name="URL Link", value=f"[Click here.]({url})")
-
-            embeds.append(embed)
-
-        await ctx.paginate(embeds)
-
     @commands.command(name="apm")
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def apm(self, ctx, *, query):
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def apm(self, ctx, *, name):
+        """Get an atom package's info."""
         try:
             auth = (("Authorization", ctx.bot.config.ATOM_KEY),)
-            package = await ctx.request("GET", f"https://atom.io/api/packages/"
-                                        f"{urlquote('-'.join(query.lower().split()), safe='')}",
-                                        json=True, headers=auth)
-        except Exception as exc:
+            package = await ctx.get(f"https://atom.io/api/packages/"
+                                    f"{urlquote('-'.join(name.lower().split()), safe='')}", headers=auth)
+        except Exception:
             raise commands.BadArgument("No results or the API did not respond.")
 
         embed = discord.Embed(title=package["name"], url=package["repository"]["url"])
@@ -318,6 +292,68 @@ class General(commands.Cog):
                               f"| Latest: {package['releases']['latest']}")
 
         await ctx.send(embed=embed)
+
+    @commands.command(name="urlshort", aliases=["bitly"])
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def bitly(self, ctx, *, url: lambda x: x.strip("<>")):
+        """Make an url shorter idk."""
+        data = json.dumps({"long_url": url})
+
+        r = await ctx.post("https://api-ssl.bitly.com/v4/shorten", data=data, headers=(
+                             ("Content-Type", "application/json"), ("Authorization", ctx.bot.config.BITLY_TOKEN)
+        ))
+
+        await ctx.send(f"<{r['link']}> (**Shortened by {len(url) - len({r['link']})} characters**.)")
+
+    @commands.command(name="pypi")
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def pypi(self, ctx, *, name):
+        """Get a pypi package's info."""
+        data = await ctx.get(f"https://pypi.org/pypi/{urlquote(name, safe='')}/json")
+
+        embed = discord.Embed(title=data["info"]["name"], url=data["info"]["package_url"],
+                              color=discord.Color.dark_blue())
+        embed.set_author(name=data["info"]["author"])
+        embed.description = data["info"]["summary"] or "No short description."
+        embed.add_field(name="Classifiers", value="\n".join(data["info"]["classifiers"]) or "No classifiers.")
+        embed.set_footer(text=f"Latest: {data['info']['version']} |"
+                              f" Keywords: {data['info']['keywords'] or 'No keywords.'}")
+        embed.set_thumbnail(url="https://cdn-images-1.medium.com/max/1200/1*2FrV8q6rPdz6w2ShV6y7bw.png")
+
+        await ctx.send(embed=embed)
+
+    def build_amiibo_embed(self, data):
+        id_ = data["head"] + "-" + data["tail"]
+        embed = discord.Embed(title=data["character"],
+                              url=f"https://amiibo.life/nfc/{id_}")
+        embed.set_thumbnail(url=data["image"])
+        embed.description = f"**Game Series:** {data['gameSeries']}\n" \
+            f"**Amiibo Series:** {data['amiiboSeries']}\n" \
+            f"**Type**: {data['type']}"
+        try:
+            r = datetime.strptime(data["release"]["eu"], "%Y-%m-%d")
+            delta = humanize.naturaldelta(datetime.utcnow() - r)
+            embed.set_footer(text=f"Released {delta} ago")
+        except (ValueError, TypeError, AttributeError):
+            pass
+
+        return embed
+
+    @commands.command(name="amiibo", case_insensitive=True)
+    @commands.cooldown(1, 2.5, commands.BucketType.user)
+    async def amiibo(self, ctx, *, name: commands.clean_content):
+        try:
+            amiibo = await ctx.get("https://www.amiiboapi.com/api/amiibo", cache=True, name=name)
+        except Exception as e:
+            raise e
+
+        embeds = []
+        for data in amiibo["amiibo"]:
+            embed = self.build_amiibo_embed(data)
+
+            embeds.append(embed)
+
+        await ctx.paginate(embeds)
 
 
 def setup(bot):
